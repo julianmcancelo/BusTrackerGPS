@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 
 import '../data/settings_repository.dart';
 import '../../backup/data/backup_service.dart';
+import '../../../database/database_provider.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/services/ota_update_service.dart';
 import '../../../core/services/github_update_service.dart';
 
@@ -352,7 +354,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
 
-              // Section 5: Shorebird OTA
+              // Section 5: Lanús Digital Server & Catalog
+              _buildSectionHeader(Icons.cloud_sync_outlined, 'SINCRONIZACIÓN LANÚS DIGITAL', 'Servidor municipal y catálogo de líneas'),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.alt_route, color: Color(0xFF0284C7)),
+                      title: const Text('Catálogo de Colectivos'),
+                      subtitle: const Text('Descargar líneas y ramales oficiales de Lanús'),
+                      trailing: const Icon(Icons.download_rounded),
+                      onTap: () async {
+                        final count = await SyncService.fetchOfficialLines(ref.read(databaseProvider));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Catálogo actualizado: $count ramales incorporados'),
+                              backgroundColor: const Color(0xFF16A34A),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Section 6: Shorebird OTA
               _buildSectionHeader(Icons.system_update_alt, 'ACTUALIZACIONES OTA (SHOREBIRD)', 'Actualizaciones instantáneas de código sin reinstalar'),
               Builder(
                 builder: (context) {

@@ -30,9 +30,15 @@ class Trips extends Table {
   IntColumn get stopCount => integer().withDefault(const Constant(0))();
   IntColumn get incidentCount => integer().withDefault(const Constant(0))();
 
+  // ── AUDITORÍA DE SINCRONIZACIÓN CON LANÚS DIGITAL ──
+  TextColumn get syncStatus => text().withDefault(const Constant('PENDING'))(); // 'PENDING', 'SYNCED', 'FAILED'
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+  TextColumn get remoteId => text().nullable()(); // ID devuelto por Postgres/Prisma
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
 }
+

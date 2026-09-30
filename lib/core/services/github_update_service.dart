@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
-
-const String githubReleasesApiUrl = 'https://api.github.com/repos/julianmcancelo/BusTrackerGPS/releases/latest';
+import '../constants/api_credentials.dart';
 
 enum GithubUpdateStatus {
   idle,
@@ -85,33 +84,35 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
       final cleanLatest = latest.replaceAll('v', '').trim();
       final cleanCurrent = current.replaceAll('v', '').trim();
 
-      final latestParts = cleanLatest.split('.').map(int.parse).toList();
-      final currentParts = cleanCurrent.split('.').map(int.parse).toList();
+      final latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
-      for (int i = 0; i < latestParts.length && i < currentParts.length; i++) {
-        if (latestParts[i] > currentParts[i]) return true;
-        if (latestParts[i] < currentParts[i]) return false;
+      for (int i = 0; i < 3; i++) {
+        final r = i < latestParts.length ? latestParts[i] : 0;
+        final c = i < currentParts.length ? currentParts[i] : 0;
+        if (r > c) return true;
+        if (r < c) return false;
       }
-      return latestParts.length > currentParts.length;
+      return false;
     } catch (_) {
       return latest != current;
     }
   }
 
-  Future<void> checkForUpdates({bool autoDownload = false}) async {
+  Future<void> checkForUpdates({bool autoDownload = false, BuildContext? context, bool showNoUpdateToast = false}) async {
     await _initCurrentVersion();
     state = state.copyWith(status: GithubUpdateStatus.checking, errorMessage: null);
 
     try {
       final response = await http.get(
-        Uri.parse(githubReleasesApiUrl),
+        Uri.parse(LanusCredentials.githubReleasesApi),
         headers: {'Accept': 'application/vnd.github.v3+json'},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final latestTag = data['tag_name']?.toString() ?? '';
-        final bodyText = data['body']?.toString() ?? '';
+        final latestTag = (data['tag_name'] ?? '').toString();
+        final bodyText = data['body']?.toString() ?? 'Actualización disponible de Lanús Digital.';
         final assets = data['assets'] as List<dynamic>? ?? [];
 
         String? apkDownloadUrl;
@@ -122,6 +123,7 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
             break;
           }
         }
+        apkDownloadUrl ??= LanusCredentials.directApkDownload;
 
         if (_isNewerVersion(latestTag, state.currentVersion)) {
           state = state.copyWith(
@@ -131,7 +133,9 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
             downloadUrl: apkDownloadUrl,
           );
 
-          if (autoDownload && apkDownloadUrl != null) {
+          if (context != null && context.mounted) {
+            _showUpdateDialog(context, latestTag, bodyText, apkDownloadUrl);
+          } else if (autoDownload) {
             await downloadAndInstallApk();
           }
         } else {
@@ -140,6 +144,11 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
             latestVersion: latestTag,
             errorMessage: null,
           );
+          if (showNoUpdateToast && context != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ya tenés instalada la versión más reciente de Lanús Digital.')),
+            );
+          }
         }
       } else {
         state = state.copyWith(
@@ -155,14 +164,65 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
     }
   }
 
-  Future<void> downloadAndInstallApk() async {
-    final url = state.downloadUrl;
-    if (url == null || url.isEmpty) {
-      state = state.copyWith(
-        status: GithubUpdateStatus.error,
-        errorMessage: 'No se encontró enlace de descarga APK en la release',
+  void _showUpdateDialog(BuildContext context, String newVersion, String notes, String apkUrl) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.system_update_rounded, color: Color(0xFF0284C7)),
+            const SizedBox(width: 8),
+            Text('Actualización: $newVersion'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Hay una nueva versión oficial de Lanús Digital lista para instalar.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(notes, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Más tarde'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('Actualizar Ahora'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              downloadAndInstallApk(context: context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> downloadAndInstallApk({BuildContext? context}) async {
+    final url = state.downloadUrl ?? LanusCredentials.directApkDownload;
+    ScaffoldMessengerState? messenger;
+    if (context != null && context.mounted) {
+      messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              SizedBox(width: 14),
+              Text('Descargando actualización de Lanús Digital...'),
+            ],
+          ),
+          duration: Duration(minutes: 3),
+        ),
       );
-      return;
     }
 
     state = state.copyWith(status: GithubUpdateStatus.downloading, downloadProgress: 0.0);
@@ -196,8 +256,18 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
         downloadProgress: 1.0,
       );
 
+      if (messenger != null) {
+        messenger.hideCurrentSnackBar();
+      }
+
       await installApk();
     } catch (e) {
+      if (messenger != null) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error al descargar la APK: $e')),
+        );
+      }
       state = state.copyWith(
         status: GithubUpdateStatus.error,
         errorMessage: 'Error al descargar la APK de GitHub: $e',
@@ -229,5 +299,17 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
         errorMessage: 'Error al abrir el instalador APK: $e',
       );
     }
+  }
+}
+
+class GitHubUpdateService {
+  static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateToast = false}) async {
+    try {
+      final container = ProviderScope.containerOf(context);
+      await container.read(githubUpdateProvider.notifier).checkForUpdates(
+        context: context,
+        showNoUpdateToast: showNoUpdateToast,
+      );
+    } catch (_) {}
   }
 }

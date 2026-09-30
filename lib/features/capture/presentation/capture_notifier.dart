@@ -4,6 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../../database/database.dart';
+import '../../../database/database_provider.dart';
+import '../../../core/services/sync_service.dart';
 import '../domain/capture_state.dart';
 import '../data/gps_repository.dart';
 import '../data/foreground_task_handler.dart';
@@ -534,6 +536,26 @@ class CaptureNotifier extends Notifier<CaptureState> {
       stopCount: state.stopCount,
       incidentCount: state.incidentCount,
     );
+
+    // Auto-sync with Lanús Digital in background
+    try {
+      final details = await tripsRepo.getTripWithDetails(tripId);
+      if (details != null) {
+        final trackPoints = await gpsRepo.getTrackPoints(tripId);
+        final stops = await gpsRepo.getStops(tripId);
+        final incidents = await gpsRepo.getIncidents(tripId);
+
+        SyncService.syncTrip(
+          db: ref.read(databaseProvider),
+          trip: details.trip,
+          line: details.line,
+          branch: details.branch,
+          trackPoints: trackPoints,
+          stops: stops,
+          incidents: incidents,
+        );
+      }
+    } catch (_) {}
 
     final finishedTripId = state.tripId;
 

@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
@@ -56,6 +56,13 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('CREATE INDEX idx_trips_line_id ON trips (line_id);');
 
           await seedInitialTransportData();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(trips, trips.syncStatus);
+            await m.addColumn(trips, trips.syncedAt);
+            await m.addColumn(trips, trips.remoteId);
+          }
         },
       );
 

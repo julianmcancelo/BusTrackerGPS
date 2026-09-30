@@ -1072,6 +1072,40 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, TripEntry> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PENDING'),
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1118,6 +1152,9 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, TripEntry> {
     pointCount,
     stopCount,
     incidentCount,
+    syncStatus,
+    syncedAt,
+    remoteId,
     createdAt,
     updatedAt,
   ];
@@ -1279,6 +1316,24 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, TripEntry> {
         ),
       );
     }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1380,6 +1435,18 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, TripEntry> {
         DriftSqlType.int,
         data['${effectivePrefix}incident_count'],
       )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1418,6 +1485,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
   final int pointCount;
   final int stopCount;
   final int incidentCount;
+  final String syncStatus;
+  final DateTime? syncedAt;
+  final String? remoteId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const TripEntry({
@@ -1441,6 +1511,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
     required this.pointCount,
     required this.stopCount,
     required this.incidentCount,
+    required this.syncStatus,
+    this.syncedAt,
+    this.remoteId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1477,6 +1550,13 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
     map['point_count'] = Variable<int>(pointCount);
     map['stop_count'] = Variable<int>(stopCount);
     map['incident_count'] = Variable<int>(incidentCount);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1514,6 +1594,13 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
       pointCount: Value(pointCount),
       stopCount: Value(stopCount),
       incidentCount: Value(incidentCount),
+      syncStatus: Value(syncStatus),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1545,6 +1632,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
       pointCount: serializer.fromJson<int>(json['pointCount']),
       stopCount: serializer.fromJson<int>(json['stopCount']),
       incidentCount: serializer.fromJson<int>(json['incidentCount']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1573,6 +1663,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
       'pointCount': serializer.toJson<int>(pointCount),
       'stopCount': serializer.toJson<int>(stopCount),
       'incidentCount': serializer.toJson<int>(incidentCount),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'remoteId': serializer.toJson<String?>(remoteId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1599,6 +1692,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
     int? pointCount,
     int? stopCount,
     int? incidentCount,
+    String? syncStatus,
+    Value<DateTime?> syncedAt = const Value.absent(),
+    Value<String?> remoteId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => TripEntry(
@@ -1624,6 +1720,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
     pointCount: pointCount ?? this.pointCount,
     stopCount: stopCount ?? this.stopCount,
     incidentCount: incidentCount ?? this.incidentCount,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1669,6 +1768,11 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
       incidentCount: data.incidentCount.present
           ? data.incidentCount.value
           : this.incidentCount,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1697,6 +1801,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
           ..write('pointCount: $pointCount, ')
           ..write('stopCount: $stopCount, ')
           ..write('incidentCount: $incidentCount, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('remoteId: $remoteId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1725,6 +1832,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
     pointCount,
     stopCount,
     incidentCount,
+    syncStatus,
+    syncedAt,
+    remoteId,
     createdAt,
     updatedAt,
   ]);
@@ -1752,6 +1862,9 @@ class TripEntry extends DataClass implements Insertable<TripEntry> {
           other.pointCount == this.pointCount &&
           other.stopCount == this.stopCount &&
           other.incidentCount == this.incidentCount &&
+          other.syncStatus == this.syncStatus &&
+          other.syncedAt == this.syncedAt &&
+          other.remoteId == this.remoteId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1777,6 +1890,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
   final Value<int> pointCount;
   final Value<int> stopCount;
   final Value<int> incidentCount;
+  final Value<String> syncStatus;
+  final Value<DateTime?> syncedAt;
+  final Value<String?> remoteId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1801,6 +1917,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
     this.pointCount = const Value.absent(),
     this.stopCount = const Value.absent(),
     this.incidentCount = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1826,6 +1945,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
     this.pointCount = const Value.absent(),
     this.stopCount = const Value.absent(),
     this.incidentCount = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1854,6 +1976,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
     Expression<int>? pointCount,
     Expression<int>? stopCount,
     Expression<int>? incidentCount,
+    Expression<String>? syncStatus,
+    Expression<DateTime>? syncedAt,
+    Expression<String>? remoteId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1879,6 +2004,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
       if (pointCount != null) 'point_count': pointCount,
       if (stopCount != null) 'stop_count': stopCount,
       if (incidentCount != null) 'incident_count': incidentCount,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (remoteId != null) 'remote_id': remoteId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1906,6 +2034,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
     Value<int>? pointCount,
     Value<int>? stopCount,
     Value<int>? incidentCount,
+    Value<String>? syncStatus,
+    Value<DateTime?>? syncedAt,
+    Value<String?>? remoteId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1931,6 +2062,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
       pointCount: pointCount ?? this.pointCount,
       stopCount: stopCount ?? this.stopCount,
       incidentCount: incidentCount ?? this.incidentCount,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncedAt: syncedAt ?? this.syncedAt,
+      remoteId: remoteId ?? this.remoteId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2000,6 +2134,15 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
     if (incidentCount.present) {
       map['incident_count'] = Variable<int>(incidentCount.value);
     }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2035,6 +2178,9 @@ class TripsCompanion extends UpdateCompanion<TripEntry> {
           ..write('pointCount: $pointCount, ')
           ..write('stopCount: $stopCount, ')
           ..write('incidentCount: $incidentCount, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('remoteId: $remoteId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -7677,6 +7823,9 @@ typedef $$TripsTableCreateCompanionBuilder =
       Value<int> pointCount,
       Value<int> stopCount,
       Value<int> incidentCount,
+      Value<String> syncStatus,
+      Value<DateTime?> syncedAt,
+      Value<String?> remoteId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -7703,6 +7852,9 @@ typedef $$TripsTableUpdateCompanionBuilder =
       Value<int> pointCount,
       Value<int> stopCount,
       Value<int> incidentCount,
+      Value<String> syncStatus,
+      Value<DateTime?> syncedAt,
+      Value<String?> remoteId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -7915,6 +8067,21 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
 
   ColumnFilters<int> get incidentCount => $composableBuilder(
     column: $table.incidentCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8174,6 +8341,21 @@ class $$TripsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8313,6 +8495,17 @@ class $$TripsTableAnnotationComposer
     column: $table.incidentCount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -8522,6 +8715,9 @@ class $$TripsTableTableManager
                 Value<int> pointCount = const Value.absent(),
                 Value<int> stopCount = const Value.absent(),
                 Value<int> incidentCount = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8546,6 +8742,9 @@ class $$TripsTableTableManager
                 pointCount: pointCount,
                 stopCount: stopCount,
                 incidentCount: incidentCount,
+                syncStatus: syncStatus,
+                syncedAt: syncedAt,
+                remoteId: remoteId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -8572,6 +8771,9 @@ class $$TripsTableTableManager
                 Value<int> pointCount = const Value.absent(),
                 Value<int> stopCount = const Value.absent(),
                 Value<int> incidentCount = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8596,6 +8798,9 @@ class $$TripsTableTableManager
                 pointCount: pointCount,
                 stopCount: stopCount,
                 incidentCount: incidentCount,
+                syncStatus: syncStatus,
+                syncedAt: syncedAt,
+                remoteId: remoteId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

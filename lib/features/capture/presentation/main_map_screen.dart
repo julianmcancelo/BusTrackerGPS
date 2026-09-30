@@ -13,6 +13,7 @@ import 'capture_notifier.dart';
 import '../../media/data/media_service.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/github_update_service.dart';
 import '../data/gps_repository.dart';
 import '../../../core/permissions/permissions_handler.dart';
 
@@ -66,6 +67,10 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
 
     _loadTransportData();
     _loadPointsForMap();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(githubUpdateProvider.notifier).checkForUpdates(context: context);
+    });
   }
 
   @override
