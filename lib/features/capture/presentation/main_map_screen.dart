@@ -412,8 +412,8 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('BITÁCORA GPS', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                            Text('Relevamiento Colectivos', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text('LANÚS DIGITAL', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                            Text('Relevamiento de Campo', style: TextStyle(color: Colors.white70, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -426,7 +426,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                       color: Colors.black26,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('v1.0.4 · Offline-First · Shorebird OTA', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    child: const Text('v1.0.6 · Lanús Digital · Shorebird OTA', style: TextStyle(color: Colors.white, fontSize: 11)),
                   ),
                 ],
               ),
@@ -534,16 +534,16 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                   if (pos != null)
                     Marker(
                       point: currentLatLng,
-                      width: 38,
-                      height: 38,
+                      width: 26,
+                      height: 26,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: state.status == CaptureStatus.active ? Colors.blue.shade800 : Colors.green.shade700,
+                          color: state.status == CaptureStatus.active ? Colors.red.shade600 : Colors.blue.shade700,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6)],
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 4)],
                         ),
-                        child: const Icon(Icons.directions_bus, color: Colors.white, size: 22),
+                        child: const Icon(Icons.person, color: Colors.white, size: 14),
                       ),
                     ),
                   ..._stopPoints.map(
@@ -611,7 +611,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      const Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                       Text(
                                         pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
                                         style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),

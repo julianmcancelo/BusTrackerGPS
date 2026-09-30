@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Bitácora GPS';
+  static const String appName = 'LANÚS DIGITAL';
 
   // Default GPS parameters
   static const int defaultIntervalSeconds = 2;

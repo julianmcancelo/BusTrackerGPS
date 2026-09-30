@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../data/settings_repository.dart';
 import '../../backup/data/backup_service.dart';
 import '../../../core/services/ota_update_service.dart';
+import '../../../core/services/github_update_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -430,6 +431,115 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Section 6: GitHub Releases Auto-Update
+              _buildSectionHeader(Icons.download_for_offline, 'ACTUALIZACIÓN APK DESDE GITHUB', 'Descarga e instalación directa de nuevas versiones APK'),
+              Builder(
+                builder: (context) {
+                  final ghState = ref.watch(githubUpdateProvider);
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.shade50,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.adb, color: Colors.purple, size: 24),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'GitHub Releases Auto-Updater',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      'Versión Instalada: ${ghState.currentVersion}${ghState.latestVersion != null ? " · Última: ${ghState.latestVersion}" : ""}',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (ghState.status == GithubUpdateStatus.downloading) ...[
+                            const SizedBox(height: 12),
+                            LinearProgressIndicator(value: ghState.downloadProgress, borderRadius: BorderRadius.circular(8)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Descargando APK... ${(ghState.downloadProgress * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                          if (ghState.errorMessage != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Text(
+                                ghState.errorMessage!,
+                                style: TextStyle(fontSize: 12, color: Colors.red.shade900, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          if (ghState.status == GithubUpdateStatus.updateAvailable || ghState.status == GithubUpdateStatus.readyToInstall) ...[
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                                backgroundColor: Colors.purple.shade800,
+                              ),
+                              onPressed: () => ref.read(githubUpdateProvider.notifier).downloadAndInstallApk(),
+                              icon: const Icon(Icons.install_mobile),
+                              label: Text(
+                                ghState.status == GithubUpdateStatus.readyToInstall
+                                    ? 'INSTALAR APK DESCARGADA (${ghState.latestVersion})'
+                                    : 'DESCARGAR E INSTALAR APK (${ghState.latestVersion})',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ] else ...[
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                              onPressed: ghState.status == GithubUpdateStatus.checking || ghState.status == GithubUpdateStatus.downloading
+                                  ? null
+                                  : () => ref.read(githubUpdateProvider.notifier).checkForUpdates(),
+                              icon: ghState.status == GithubUpdateStatus.checking
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.refresh),
+                              label: Text(
+                                ghState.status == GithubUpdateStatus.checking
+                                    ? 'VERIFICANDO EN GITHUB...'
+                                    : (ghState.status == GithubUpdateStatus.upToDate ? 'APLICACIÓN EN ÚLTIMA VERSIÓN (VERIFICAR DE NUEVO)' : 'BUSCAR RELEASES EN GITHUB'),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

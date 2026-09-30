@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router.dart';
 import 'theme.dart';
 import '../core/services/ota_update_service.dart';
+import '../core/services/github_update_service.dart';
 
 class BitacoraGpsApp extends ConsumerStatefulWidget {
   const BitacoraGpsApp({super.key});
@@ -18,13 +19,14 @@ class _BitacoraGpsAppState extends ConsumerState<BitacoraGpsApp> {
     super.initState();
     Future.microtask(() {
       ref.read(otaUpdateProvider.notifier).checkForUpdates();
+      ref.read(githubUpdateProvider.notifier).checkForUpdates();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Bitácora GPS',
+      title: 'LANÚS DIGITAL',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

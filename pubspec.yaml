@@ -59,6 +59,7 @@ dependencies:
   uuid: ^4.6.0
   http: ^1.6.0
   shorebird_code_push: ^2.0.7
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:
