@@ -46,7 +46,7 @@ class BackupService {
 
     final nowStr = DateTime.now().toIso8601String().split('T').first;
     final metadata = {
-      'app': 'Bitácora GPS Backup',
+      'app': 'Lanús Digital Backup',
       'version': '1.0.0',
       'createdAt': DateTime.now().toIso8601String(),
     };
@@ -57,7 +57,7 @@ class BackupService {
     final zipData = encoder.encode(archive);
 
     final tempDir = await getTemporaryDirectory();
-    final backupFile = File(p.join(tempDir.path, 'bitacora_backup_$nowStr.zip'));
+    final backupFile = File(p.join(tempDir.path, 'lanus_digital_backup_$nowStr.zip'));
     await backupFile.writeAsBytes(zipData);
 
     return backupFile;

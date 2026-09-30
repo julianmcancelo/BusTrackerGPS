@@ -135,7 +135,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           children: [
             Icon(Icons.directions_bus, size: 28),
             SizedBox(width: 8),
-            Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
@@ -301,7 +301,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                     ),
                     onPressed: _startCapture,
                     icon: const Icon(Icons.play_arrow, size: 28),
-                    label: const Text('▶ INICIAR CAPTURA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    label: const Text('INICIAR CAPTURA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
 
                   const SizedBox(height: 12),

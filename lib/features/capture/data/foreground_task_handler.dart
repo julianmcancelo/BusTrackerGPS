@@ -56,7 +56,7 @@ class BitacoraGpsTaskHandler extends TaskHandler {
     // Notification update on repeat interval
     if (_tripId != null) {
       FlutterForegroundTask.updateService(
-        notificationTitle: '🚍 Bitácora GPS',
+        notificationTitle: 'Lanús Digital',
         notificationText: 'Captura activa en segundo plano...',
       );
     }

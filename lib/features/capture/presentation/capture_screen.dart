@@ -93,7 +93,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       setState(() => _isRecordingAudio = true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎤 Grabando audio... Pulse de nuevo para finalizar')),
+          const SnackBar(content: Text('Grabando nota de audio... Pulse de nuevo para finalizar')),
         );
       }
     }
@@ -407,7 +407,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                       _loadPointsForMap();
                     },
                     icon: const Icon(Icons.location_on, size: 32),
-                    label: const Text('📍 REGISTRAR PARADA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    label: const Text('REGISTRAR PARADA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   ),
 
                   const SizedBox(height: 12),
@@ -420,7 +420,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                           style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                           onPressed: _showIncidentPicker,
                           icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                          label: const Text('⚠ INCIDENCIA'),
+                          label: const Text('INCIDENCIA'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -429,7 +429,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                           style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                           onPressed: _handleTakePhoto,
                           icon: const Icon(Icons.camera_alt),
-                          label: const Text('📷 FOTO'),
+                          label: const Text('FOTO'),
                         ),
                       ),
                     ],
@@ -448,7 +448,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                           ),
                           onPressed: _handleToggleAudio,
                           icon: Icon(Icons.mic, color: _isRecordingAudio ? Colors.red : null),
-                          label: Text(_isRecordingAudio ? '⏹ DETENER' : '🎤 AUDIO'),
+                          label: Text(_isRecordingAudio ? 'DETENER' : 'AUDIO'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -459,7 +459,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                             ref.read(captureNotifierProvider.notifier).addIncident(type: 'otro', description: 'Punto libre');
                           },
                           icon: const Icon(Icons.add_location_alt),
-                          label: const Text('+ PUNTO'),
+                          label: const Text('PUNTO'),
                         ),
                       ),
                     ],
@@ -485,7 +485,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                           },
                           icon: Icon(state.status == CaptureStatus.paused ? Icons.play_arrow : Icons.pause, color: Colors.white),
                           label: Text(
-                            state.status == CaptureStatus.paused ? '▶ REANUDAR' : '⏸ PAUSAR',
+                            state.status == CaptureStatus.paused ? 'REANUDAR' : 'PAUSAR',
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -499,7 +499,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                           ),
                           onPressed: _confirmFinish,
                           icon: const Icon(Icons.stop, color: Colors.white),
-                          label: const Text('■ FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: const Text('FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

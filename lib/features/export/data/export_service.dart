@@ -92,7 +92,7 @@ class ExportService {
   }) async {
     final buffer = StringBuffer();
     buffer.writeln('<?xml version="1.0" encoding="UTF-8"?>');
-    buffer.writeln('<gpx version="1.1" creator="Bitácora GPS" xmlns="http://www.topografix.com/GPX/1/1">');
+    buffer.writeln('<gpx version="1.1" creator="Lanús Digital" xmlns="http://www.topografix.com/GPX/1/1">');
     buffer.writeln('  <metadata>');
     buffer.writeln('    <name>${line.number} - ${branch.name} (${trip.direction})</name>');
     buffer.writeln('    <time>${trip.startedAt.toIso8601String()}</time>');
@@ -229,7 +229,7 @@ class ExportService {
     });
 
     final metadataJson = jsonEncode({
-      'app': 'Bitácora GPS',
+      'app': 'Lanús Digital',
       'line': line.number,
       'branch': branch.name,
       'direction': trip.direction,
@@ -269,7 +269,7 @@ class ExportService {
   static Future<void> shareFile(File file, {String? text}) async {
     await Share.shareXFiles(
       [XFile(file.path)],
-      text: text ?? 'Recorrido GPS exportado desde Bitácora GPS',
+      text: text ?? 'Recorrido GPS exportado desde Lanús Digital',
     );
   }
 

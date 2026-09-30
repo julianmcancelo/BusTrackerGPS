@@ -183,9 +183,9 @@ class CaptureNotifier extends Notifier<CaptureState> {
     try {
       FlutterForegroundTask.init(
         androidNotificationOptions: AndroidNotificationOptions(
-          channelId: 'bitacora_gps_channel',
-          channelName: 'Bitácora GPS Tracking',
-          channelDescription: 'Seguimiento GPS de colectivo en segundo plano',
+          channelId: 'lanus_digital_channel',
+          channelName: 'Lanús Digital Tracking',
+          channelDescription: 'Seguimiento GPS de transporte en segundo plano',
           channelImportance: NotificationChannelImportance.HIGH,
           priority: NotificationPriority.HIGH,
         ),
@@ -198,8 +198,8 @@ class CaptureNotifier extends Notifier<CaptureState> {
       );
 
       await FlutterForegroundTask.startService(
-        notificationTitle: 'NSE Bitácora GPS',
-        notificationText: '${state.line?.number ?? ''} · ${state.branch?.name ?? ''} · ${state.direction}',
+        notificationTitle: 'Lanús Digital',
+        notificationText: 'Línea ${state.line?.number ?? ''} · ${state.branch?.name ?? ''} · ${state.direction}',
         callback: startCallback,
       );
 
@@ -266,7 +266,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
         final distKm = (state.totalDistanceMeters / 1000.0).toStringAsFixed(2);
         final timeStr = GeoUtils.formatDuration(Duration(seconds: elapsed));
         FlutterForegroundTask.updateService(
-          notificationTitle: '🚍 Bitácora GPS - ${state.line?.number ?? ''}',
+          notificationTitle: 'Lanús Digital - Línea ${state.line?.number ?? ''}',
           notificationText: 'Capturando · $distKm km · $timeStr',
         );
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -362,6 +363,73 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     }
   }
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  Future<void> _handleBackNavigation() async {
+    // 1. If drawer is open, close it
+    if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final state = ref.read(captureNotifierProvider);
+
+    // 2. If recording is active, inform that recording continues in background or allow exit
+    if (state.status == CaptureStatus.active || state.status == CaptureStatus.paused) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.info_outline, color: Colors.blue, size: 36),
+          title: const Text('RELEVAMIENTO EN CURSO'),
+          content: const Text(
+            'El relevamiento continuará registrándose en segundo plano.\n\n'
+            '¿Desea enviar la aplicación al segundo plano o permanecer en el mapa?',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('PERMANECER EN EL MAPA'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('SALIR AL INICIO'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldExit == true) {
+        // Send app to background using SystemNavigator
+        SystemNavigator.pop();
+      }
+      return;
+    }
+
+    // 3. If idle, show confirmation dialog before exiting app
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.exit_to_app, color: Colors.indigo, size: 36),
+        title: const Text('¿CERRAR LANÚS DIGITAL?'),
+        content: const Text('¿Está seguro de que desea salir de la aplicación?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCELAR'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('SALIR'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(captureNotifierProvider);
@@ -380,99 +448,200 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
       });
     }
 
-    return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade900, Colors.blue.shade700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackNavigation();
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: Drawer(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.only(top: 48, bottom: 20, left: 20, right: 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade900, Colors.indigo.shade800],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.location_city, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'LANÚS DIGITAL',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              Text(
+                                'Movilidad Urbana y Transporte',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.system_update_alt, color: Colors.white70, size: 13),
+                          SizedBox(width: 6),
+                          Text(
+                            'v1.0.7 · Actualización OTA & Releases',
+                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.directions_bus, color: Colors.white, size: 32),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                          Text('LANÚS DIGITAL', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                            Text('Relevamiento de Campo', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          ],
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        'OPERACIONES DE CAMPO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey,
+                          letterSpacing: 1.0,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('v1.0.6 · Lanús Digital · Shorebird OTA', style: TextStyle(color: Colors.white, fontSize: 11)),
-                  ),
-                ],
+                    ListTile(
+                      leading: const Icon(Icons.map, color: Colors.blue),
+                      title: const Text('Mapa y Relevamiento GPS', style: TextStyle(fontWeight: FontWeight.w600)),
+                      selected: true,
+                      selectedTileColor: Colors.blue.withOpacity(0.08),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.history, color: Colors.indigo),
+                      title: const Text('Historial de Trazados'),
+                      subtitle: const Text('Consulta de idas y vueltas guardadas', style: TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/trips');
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Divider(),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        'RED MUNICIPAL DE TRANSPORTE',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.directions_bus_filled, color: Colors.teal),
+                      title: const Text('Líneas y Ramales (520 - 527)'),
+                      subtitle: Text('${_lines.length} líneas operativas', style: const TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/transport');
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.download_for_offline, color: Colors.orange),
+                      title: const Text('Mapas Offline'),
+                      subtitle: const Text('Descargas locales para trabajo sin señal', style: TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/maps');
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Divider(),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        'SISTEMA Y AJUSTES',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.settings, color: Colors.blueGrey),
+                      title: const Text('Configuración & Backup'),
+                      subtitle: const Text('Actualizaciones OTA, GitHub y respaldos', style: TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/settings');
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.map, color: Colors.blue),
-              title: const Text('Mapa Principal'),
-              selected: true,
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Historial de Viajes'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/trips');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.alt_route),
-              title: const Text('Gestión de Líneas y Ramales'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/transport');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.download_for_offline),
-              title: const Text('Mapas Offline'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/maps');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Ajustes & Backup'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/settings');
-              },
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Municipio de Lanús · Sistema de Relevamiento',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       body: Stack(
         children: [
           // 100% Fullscreen Map
@@ -1046,6 +1215,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
