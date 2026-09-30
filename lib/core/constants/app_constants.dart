@@ -1,0 +1,102 @@
+class AppConstants {
+  static const String appName = 'Bitácora GPS';
+
+  // Default GPS parameters
+  static const int defaultIntervalSeconds = 2;
+  static const double defaultMinDistanceMeters = 3.0;
+  static const double defaultMaxAccuracyMeters = 50.0;
+
+  // Auto stop detection defaults
+  static const int defaultAutoStopMinTimeSeconds = 20;
+  static const double defaultAutoStopMaxSpeedKmh = 2.0;
+
+  // Deviation threshold
+  static const double defaultDeviationThresholdMeters = 100.0;
+}
+
+enum TripStatus { draft, active, paused, finished }
+
+enum PointQuality { good, lowAccuracy, outlier }
+
+enum StopStatus { manual, autoDetected, confirmed, ignored }
+
+enum IncidentType {
+  obra,
+  corte,
+  desvio,
+  transito,
+  parada,
+  calzada,
+  unidad,
+  accidente,
+  otro,
+}
+
+extension IncidentTypeX on IncidentType {
+  String get label {
+    switch (this) {
+      case IncidentType.obra:
+        return 'Obra';
+      case IncidentType.corte:
+        return 'Corte de calle';
+      case IncidentType.desvio:
+        return 'Desvío de ruta';
+      case IncidentType.transito:
+        return 'Tránsito lento';
+      case IncidentType.parada:
+        return 'Parada bloqueada';
+      case IncidentType.calzada:
+        return 'Estado de calzada';
+      case IncidentType.unidad:
+        return 'Falla de unidad';
+      case IncidentType.accidente:
+        return 'Accidente';
+      case IncidentType.otro:
+        return 'Otro';
+    }
+  }
+
+  String get iconEmoji {
+    switch (this) {
+      case IncidentType.obra:
+        return '🚧';
+      case IncidentType.corte:
+        return '🚫';
+      case IncidentType.desvio:
+        return '↪';
+      case IncidentType.transito:
+        return '🚦';
+      case IncidentType.parada:
+        return '🚏';
+      case IncidentType.calzada:
+        return '🛣';
+      case IncidentType.unidad:
+        return '🚍';
+      case IncidentType.accidente:
+        return '💥';
+      case IncidentType.otro:
+        return '📝';
+    }
+  }
+}
+
+enum IncidentSeverity { low, medium, high, critical }
+
+extension IncidentSeverityX on IncidentSeverity {
+  String get label {
+    switch (this) {
+      case IncidentSeverity.low:
+        return 'Baja';
+      case IncidentSeverity.medium:
+        return 'Media';
+      case IncidentSeverity.high:
+        return 'Alta';
+      case IncidentSeverity.critical:
+        return 'Crítica';
+    }
+  }
+}
+
+enum MovementStatus { moving, stopped, unknown }
+
+enum AttachmentType { photo, audio, file }
