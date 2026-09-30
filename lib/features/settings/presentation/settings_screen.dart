@@ -26,6 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _snapToRoadsEnabled = true;
   bool _hapticsEnabled = true;
   String _defaultExportFormat = 'GeoJSON';
+  String _serverUrl = 'https://lanusgis-ca546.web.app';
 
   bool _isLoading = true;
 
@@ -45,6 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final snapRoads = await repo.getSnapToRoadsEnabled();
     final haptics = await repo.getHapticsEnabled();
     final fmt = await repo.getDefaultExportFormat();
+    final server = await SyncService.getServerUrl();
 
     setState(() {
       _gpsInterval = interval;
@@ -55,6 +57,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _snapToRoadsEnabled = snapRoads;
       _hapticsEnabled = haptics;
       _defaultExportFormat = fmt;
+      _serverUrl = server;
       _isLoading = false;
     });
   }
@@ -362,6 +365,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   children: [
                     ListTile(
+                      leading: const Icon(Icons.dns, color: Color(0xFF0284C7)),
+                      title: const Text('URL del Servidor Municipal'),
+                      subtitle: Text(_serverUrl),
+                      trailing: const Icon(Icons.edit, size: 20),
+                      onTap: () async {
+                        final controller = TextEditingController(text: _serverUrl);
+                        final newUrl = await showDialog<String>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Configurar Servidor Lanús'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Ingrese la URL base del backend de Lanús Digital:',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: controller,
+                                  decoration: const InputDecoration(
+                                    labelText: 'URL del Servidor',
+                                    hintText: 'https://tu-servidor.com',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('CANCELAR'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                                child: const Text('GUARDAR'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (newUrl != null && newUrl.isNotEmpty) {
+                          await SyncService.setServerUrl(newUrl);
+                          setState(() => _serverUrl = newUrl);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Servidor actualizado: $newUrl')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
                       leading: const Icon(Icons.alt_route, color: Color(0xFF0284C7)),
                       title: const Text('Catálogo de Colectivos'),
                       subtitle: const Text('Descargar líneas y ramales oficiales de Lanús'),
@@ -371,8 +428,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Catálogo actualizado: $count ramales incorporados'),
-                              backgroundColor: const Color(0xFF16A34A),
+                              content: Text(
+                                count > 0
+                                    ? 'Catálogo actualizado: $count ramales incorporados'
+                                    : 'No se encontraron líneas nuevas o el servidor aún no está disponible.',
+                              ),
+                              backgroundColor: count > 0 ? const Color(0xFF16A34A) : Colors.orange.shade800,
                             ),
                           );
                         }

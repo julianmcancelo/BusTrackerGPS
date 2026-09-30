@@ -34,7 +34,7 @@ class _TripListScreenState extends ConsumerState<TripListScreen> {
     final stops = await gpsRepo.getStops(tripId);
     final incidents = await gpsRepo.getIncidents(tripId);
 
-    final success = await SyncService.syncTrip(
+    final result = await SyncService.syncTrip(
       db: db,
       trip: item.trip,
       line: item.line,
@@ -49,11 +49,12 @@ class _TripListScreenState extends ConsumerState<TripListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success
+            result.success
                 ? '✓ Recorrido ${item.line.number} sincronizado con Lanús Digital'
-                : 'No se pudo sincronizar. Verifique conexión al servidor.',
+                : 'No se pudo sincronizar: ${result.message}',
           ),
-          backgroundColor: success ? Colors.green.shade700 : Colors.red.shade700,
+          backgroundColor: result.success ? Colors.green.shade700 : Colors.red.shade700,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

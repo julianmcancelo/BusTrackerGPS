@@ -5,6 +5,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../database/database.dart';
 import '../constants/api_credentials.dart';
 
+class SyncResult {
+  final bool success;
+  final String? message;
+  final int? statusCode;
+  final String serverUrl;
+
+  const SyncResult({
+    required this.success,
+    this.message,
+    this.statusCode,
+    required this.serverUrl,
+  });
+}
+
 class SyncService {
   static const String serverUrlKey = 'lanus_server_url';
 
@@ -20,7 +34,7 @@ class SyncService {
   }
 
   /// Sincroniza un viaje hacia la base de datos de Lanús GIS vía HTTP POST
-  static Future<bool> syncTrip({
+  static Future<SyncResult> syncTrip({
     required AppDatabase db,
     required TripEntry trip,
     required LineEntry line,
@@ -29,8 +43,8 @@ class SyncService {
     required List<StopEntry> stops,
     required List<IncidentEntry> incidents,
   }) async {
+    final baseUrl = await getServerUrl();
     try {
-      final baseUrl = await getServerUrl();
       final endpoint = Uri.parse('$baseUrl${LanusCredentials.syncTripsPath}');
 
       // Puntos válidos (descartar OUTLIER)
@@ -127,7 +141,7 @@ class SyncService {
           'X-API-Key': LanusCredentials.internalApiKey,
         },
         body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 25));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final resData = jsonDecode(response.body);
@@ -140,18 +154,32 @@ class SyncService {
             remoteId: Value(remoteId),
           ),
         );
-        return true;
+        return SyncResult(
+          success: true,
+          statusCode: response.statusCode,
+          serverUrl: baseUrl,
+          message: 'Viaje sincronizado exitosamente.',
+        );
       } else {
         await (db.update(db.trips)..where((t) => t.id.equals(trip.id))).write(
           const TripsCompanion(syncStatus: Value('FAILED')),
         );
-        return false;
+        return SyncResult(
+          success: false,
+          statusCode: response.statusCode,
+          serverUrl: baseUrl,
+          message: 'Servidor respondió con código ${response.statusCode}: ${response.reasonPhrase ?? response.body}',
+        );
       }
-    } catch (_) {
+    } catch (e) {
       await (db.update(db.trips)..where((t) => t.id.equals(trip.id))).write(
         const TripsCompanion(syncStatus: Value('FAILED')),
       );
-      return false;
+      return SyncResult(
+        success: false,
+        serverUrl: baseUrl,
+        message: 'No se pudo conectar a $baseUrl ($e)',
+      );
     }
   }
 
