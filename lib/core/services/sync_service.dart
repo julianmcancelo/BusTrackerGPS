@@ -284,7 +284,108 @@ class SyncService {
       }
     } catch (_) {}
 
+    // 2. Descargar todos los relevamientos realizados con Bitácora GPS por otros usuarios
+    await fetchBitacoraGpsSurveys(db);
+
     final totalActiveLines = await (db.select(db.lines)..where((l) => l.active.equals(true))).get();
     return updatedCount > 0 ? updatedCount : totalActiveLines.length;
+  }
+
+  /// Descarga los relevamientos y trazas de campo realizados con Bitácora GPS (/api/bitacora-gps)
+  static Future<int> fetchBitacoraGpsSurveys(AppDatabase db) async {
+    int importedCount = 0;
+    try {
+      final baseUrl = await getServerUrl();
+      final endpoint = Uri.parse('$baseUrl${LanusCredentials.syncTripsPath}');
+      final response = await http.get(
+        endpoint,
+        headers: {
+          'X-App-Client': LanusCredentials.clientIdentifier,
+          'X-API-Key': LanusCredentials.internalApiKey,
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(response.body);
+        final List<dynamic> items = decoded is List
+            ? decoded
+            : (decoded['items'] ?? decoded['relevamientos'] ?? decoded['trips'] ?? []);
+
+        for (final item in items) {
+          final lineaNumero = (item['lineaNumero'] ?? item['linea'] ?? item['numero'] ?? '').toString();
+          final ramal = (item['ramal'] ?? item['subcategoria'] ?? 'Principal').toString();
+          final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
+          final datosGeo = item['datosGeo'];
+
+          if (lineaNumero.isEmpty || datosGeo == null) continue;
+
+          final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
+          if (rawGeoString.trim().isEmpty || rawGeoString == '{}') continue;
+
+          // Asegura que exista la Línea
+          final existingLine = await (db.select(db.lines)..where((l) => l.number.equals(lineaNumero))).getSingleOrNull();
+          int lineId;
+          if (existingLine == null) {
+            lineId = await db.into(db.lines).insert(
+                  LinesCompanion.insert(
+                    number: lineaNumero,
+                    name: 'Línea $lineaNumero',
+                  ),
+                );
+          } else {
+            lineId = existingLine.id;
+          }
+
+          // Asegura que exista el Ramal
+          final existingBranch = await (db.select(db.branches)
+                ..where((b) => b.lineId.equals(lineId) & b.name.equals(ramal)))
+              .getSingleOrNull();
+          int branchId;
+          if (existingBranch == null) {
+            branchId = await db.into(db.branches).insert(
+                  BranchesCompanion.insert(
+                    lineId: lineId,
+                    name: ramal,
+                  ),
+                );
+          } else {
+            branchId = existingBranch.id;
+          }
+
+          // Guarda o actualiza la traza en ReferenceRoutes
+          final existingRef = await (db.select(db.referenceRoutes)
+                ..where((r) =>
+                    r.lineId.equals(lineId) &
+                    r.branchId.equals(branchId) &
+                    r.direction.equals(sentido)))
+              .getSingleOrNull();
+
+          final routeName = 'Línea $lineaNumero - $ramal ($sentido)';
+
+          if (existingRef == null) {
+            await db.into(db.referenceRoutes).insert(
+                  ReferenceRoutesCompanion.insert(
+                    lineId: lineId,
+                    branchId: branchId,
+                    direction: sentido,
+                    name: routeName,
+                    format: 'GEOJSON',
+                    geoJsonData: rawGeoString,
+                  ),
+                );
+            importedCount++;
+          } else {
+            await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
+              ReferenceRoutesCompanion(
+                geoJsonData: Value(rawGeoString),
+                name: Value(routeName),
+              ),
+            );
+            importedCount++;
+          }
+        }
+      }
+    } catch (_) {}
+    return importedCount;
   }
 }

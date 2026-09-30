@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/transport_repository.dart';
 import '../../trips/data/trips_repository.dart';
 import '../../../database/database.dart';
+import '../../../database/database_provider.dart';
+import '../../../core/services/sync_service.dart';
 
 class TransportManagementScreen extends ConsumerStatefulWidget {
   const TransportManagementScreen({super.key});
@@ -93,6 +95,25 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
     return Scaffold(
       appBar: AppBar(
         title: const Text('GESTIÓN DE LÍNEAS Y RAMALES'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_sync_outlined),
+            tooltip: 'Sincronizar trazas de Bitácora GPS',
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sincronizando recorridos desde Bitácora GPS...')),
+              );
+              final count = await SyncService.fetchBitacoraGpsSurveys(ref.read(databaseProvider));
+              await SyncService.fetchOfficialLines(ref.read(databaseProvider));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Sincronización finalizada (' + count.toString() + ' trazas actualizadas)')),
+                );
+                setState(() {});
+              }
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddLineDialog,
