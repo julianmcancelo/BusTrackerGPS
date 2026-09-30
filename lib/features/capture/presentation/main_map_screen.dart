@@ -154,6 +154,9 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         _directionStatus = status;
         _referenceIdaPoints = idaPts;
         _referenceVueltaPoints = vueltaPts;
+        if (idaPts.isNotEmpty || vueltaPts.isNotEmpty) {
+          _showReferenceTracks = true;
+        }
 
         // Auto-select missing direction so user can register immediately
         if (status.hasIda && !status.hasVuelta) {
@@ -163,6 +166,28 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         }
       });
     }
+  }
+
+  void _fitCameraToLoadedTrack() {
+    final allPoints = <LatLng>[
+      if (_referenceIdaPoints.isNotEmpty) ..._referenceIdaPoints,
+      if (_referenceVueltaPoints.isNotEmpty) ..._referenceVueltaPoints,
+    ];
+
+    if (allPoints.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este ramal aún no tiene traza cargada para encuadrar')),
+      );
+      return;
+    }
+
+    final bounds = LatLngBounds.fromPoints(allPoints);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.only(top: 130, bottom: 300, left: 40, right: 40),
+      ),
+    );
   }
 
   Future<void> _loadPointsForMap() async {
@@ -741,19 +766,38 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
             ],
           ),
 
-          // Map Reference Polyline Toggle Overlay Button
+          // Map Reference Polyline Action Buttons
           if (_referenceIdaPoints.isNotEmpty || _referenceVueltaPoints.isNotEmpty)
             Positioned(
-              top: 100,
+              top: 95,
               right: 16,
-              child: FloatingActionButton.small(
-                heroTag: 'toggle_ref_tracks',
-                backgroundColor: _showReferenceTracks ? Colors.indigo : Colors.grey,
-                onPressed: () {
-                  setState(() => _showReferenceTracks = !_showReferenceTracks);
-                },
-                tooltip: 'Ver trazos de referencia previos',
-                child: Icon(_showReferenceTracks ? Icons.layers : Icons.layers_clear, color: Colors.white),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: 'fit_loaded_track',
+                    backgroundColor: Colors.blue.shade700,
+                    onPressed: _fitCameraToLoadedTrack,
+                    tooltip: 'Centrar en recorrido relevado',
+                    child: const Icon(Icons.zoom_in_map, color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  FloatingActionButton.small(
+                    heroTag: 'toggle_ref_tracks',
+                    backgroundColor: _showReferenceTracks ? Colors.indigo : Colors.grey.shade700,
+                    onPressed: () {
+                      setState(() => _showReferenceTracks = !_showReferenceTracks);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(_showReferenceTracks ? 'Traza visible en mapa' : 'Traza oculta en mapa'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    tooltip: _showReferenceTracks ? 'Ocultar traza en mapa' : 'Mostrar traza en mapa',
+                    child: Icon(_showReferenceTracks ? Icons.layers : Icons.layers_clear, color: Colors.white),
+                  ),
+                ],
               ),
             ),
 
@@ -956,45 +1000,100 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                             // Recorded Directions Status Badge Row
                             if (_directionStatus != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: _directionStatus!.hasAny
+                                      ? Colors.green.shade50.withOpacity(0.8)
+                                      : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _directionStatus!.hasAny ? Colors.green.shade300 : Colors.transparent,
+                                  ),
                                 ),
-                                child: Row(
+                                child: Column(
                                   children: [
-                                    Icon(
-                                      _directionStatus!.hasIda ? Icons.check_circle : Icons.pending_outlined,
-                                      size: 16,
-                                      color: _directionStatus!.hasIda ? Colors.green : Colors.orange,
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _directionStatus!.hasAny ? Icons.verified : Icons.info_outline,
+                                          size: 18,
+                                          color: _directionStatus!.hasAny ? Colors.green.shade700 : Colors.orange.shade800,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            _directionStatus!.hasAny
+                                                ? '✓ TRAZA RELEVADA (${GeoUtils.formatDistance(_directionStatus!.totalDistanceMeters)})'
+                                                : 'PENDIENTE DE RELEVAMIENTO',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: _directionStatus!.hasAny ? Colors.green.shade900 : Colors.orange.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                        if (_directionStatus!.hasAny)
+                                          InkWell(
+                                            onTap: _fitCameraToLoadedTrack,
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.shade700,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.zoom_in_map, size: 14, color: Colors.white),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'VER TRAZA',
+                                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _directionStatus!.hasIda
-                                          ? 'IDA: ${GeoUtils.formatDistance(_directionStatus!.lastIdaTrip!.trip.distanceMeters)}'
-                                          : 'IDA: Pendiente',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: _directionStatus!.hasIda ? Colors.green.shade800 : Colors.orange.shade800,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Icon(
-                                      _directionStatus!.hasVuelta ? Icons.check_circle : Icons.pending_outlined,
-                                      size: 16,
-                                      color: _directionStatus!.hasVuelta ? Colors.green : Colors.orange,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _directionStatus!.hasVuelta
-                                          ? 'VUELTA: ${GeoUtils.formatDistance(_directionStatus!.lastVueltaTrip!.trip.distanceMeters)}'
-                                          : 'VUELTA: Pendiente',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: _directionStatus!.hasVuelta ? Colors.green.shade800 : Colors.orange.shade800,
-                                      ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _directionStatus!.hasIda ? Icons.check_circle : Icons.pending_outlined,
+                                          size: 14,
+                                          color: _directionStatus!.hasIda ? Colors.green.shade700 : Colors.orange.shade700,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _directionStatus!.hasIda
+                                              ? 'IDA: ${GeoUtils.formatDistance(_directionStatus!.lastIdaTrip!.trip.distanceMeters)}'
+                                              : 'IDA: Pendiente',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: _directionStatus!.hasIda ? Colors.green.shade800 : Colors.orange.shade800,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Icon(
+                                          _directionStatus!.hasVuelta ? Icons.check_circle : Icons.pending_outlined,
+                                          size: 14,
+                                          color: _directionStatus!.hasVuelta ? Colors.green.shade700 : Colors.orange.shade700,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _directionStatus!.hasVuelta
+                                              ? 'VUELTA: ${GeoUtils.formatDistance(_directionStatus!.lastVueltaTrip!.trip.distanceMeters)}'
+                                              : 'VUELTA: Pendiente',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: _directionStatus!.hasVuelta ? Colors.green.shade800 : Colors.orange.shade800,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

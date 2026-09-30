@@ -27,6 +27,9 @@ class BranchDirectionStatus {
   final TripWithDetails? lastVueltaTrip;
 
   bool get isComplete => hasIda && hasVuelta;
+  bool get hasAny => hasIda || hasVuelta;
+  double get totalDistanceMeters =>
+      (lastIdaTrip?.trip.distanceMeters ?? 0.0) + (lastVueltaTrip?.trip.distanceMeters ?? 0.0);
 
   BranchDirectionStatus({
     required this.hasIda,

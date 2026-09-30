@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/transport_repository.dart';
+import '../../trips/data/trips_repository.dart';
 import '../../../database/database.dart';
 
 class TransportManagementScreen extends ConsumerStatefulWidget {
@@ -130,14 +131,52 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                         return Column(
                           children: [
                             ...branches.map((b) {
-                              return ListTile(
-                                leading: const Icon(Icons.subdirectory_arrow_right),
-                                title: Text(b.name),
-                                subtitle: b.description != null ? Text(b.description!) : null,
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.close, size: 18),
-                                  onPressed: () => transportRepo.deleteBranch(b.id),
-                                ),
+                              return FutureBuilder<BranchDirectionStatus>(
+                                future: ref.read(tripsRepositoryProvider).getBranchDirectionStatus(line.id, b.id),
+                                builder: (ctx, statusSnap) {
+                                  final st = statusSnap.data;
+                                  Color badgeColor = Colors.grey;
+                                  String badgeText = 'Sin relevar';
+                                  if (st != null) {
+                                    if (st.isComplete) {
+                                      badgeColor = Colors.green;
+                                      badgeText = 'Completo (Ida y Vuelta)';
+                                    } else if (st.hasAny) {
+                                      badgeColor = Colors.orange;
+                                      badgeText = st.hasIda ? 'Solo IDA' : 'Solo VUELTA';
+                                    }
+                                  }
+
+                                  return ListTile(
+                                    leading: Icon(
+                                      Icons.circle,
+                                      size: 12,
+                                      color: badgeColor,
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Text(b.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: badgeColor.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            badgeText,
+                                            style: TextStyle(fontSize: 10, color: badgeColor, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    subtitle: b.description != null ? Text(b.description!) : null,
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () => transportRepo.deleteBranch(b.id),
+                                    ),
+                                  );
+                                },
                               );
                             }),
                             ListTile(

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
 import '../../../core/services/sync_service.dart';
 import '../../capture/data/gps_repository.dart';
