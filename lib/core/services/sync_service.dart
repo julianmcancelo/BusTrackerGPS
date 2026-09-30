@@ -24,12 +24,22 @@ class SyncService {
 
   static Future<String> getServerUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(serverUrlKey) ?? LanusCredentials.defaultServerUrl;
+    final saved = prefs.getString(serverUrlKey);
+    if (saved == null ||
+        saved.contains('lanusgis-ca546') ||
+        saved == 'https://lanus.digital' ||
+        saved == 'http://lanus.digital') {
+      return LanusCredentials.defaultServerUrl;
+    }
+    return saved;
   }
 
   static Future<void> setServerUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
-    final cleanUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
+    var cleanUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
+    if (cleanUrl == 'https://lanus.digital' || cleanUrl == 'http://lanus.digital' || cleanUrl == 'lanus.digital') {
+      cleanUrl = 'https://www.lanus.digital';
+    }
     await prefs.setString(serverUrlKey, cleanUrl);
   }
 

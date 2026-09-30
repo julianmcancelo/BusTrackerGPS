@@ -26,7 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _snapToRoadsEnabled = true;
   bool _hapticsEnabled = true;
   String _defaultExportFormat = 'GeoJSON';
-  String _serverUrl = 'https://lanus.digital';
+  String _serverUrl = 'https://www.lanus.digital';
 
   bool _isLoading = true;
 
