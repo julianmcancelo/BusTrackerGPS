@@ -185,18 +185,22 @@ class SyncService {
 
   /// Descarga el catálogo oficial de líneas y ramales de Lanús Digital
   static Future<int> fetchOfficialLines(AppDatabase db) async {
+    // 1. Asegura que el catálogo base municipal esté cargado en la base de datos local
+    await db.seedInitialTransportData();
+
+    int updatedCount = 0;
     try {
       final baseUrl = await getServerUrl();
       final endpoint = Uri.parse('$baseUrl${LanusCredentials.linesCatalogPath}');
       final response = await http.get(endpoint).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        int count = 0;
+        final dynamic decoded = jsonDecode(response.body);
+        final List<dynamic> data = decoded is List ? decoded : (decoded['lineas'] ?? decoded['data'] ?? []);
 
         for (final item in data) {
-          final numero = (item['numero'] ?? item['nombre'] ?? '').toString();
-          final ramal = (item['subcategoria'] ?? 'Principal').toString();
+          final numero = (item['numero'] ?? item['linea'] ?? item['nombre'] ?? '').toString();
+          final ramal = (item['subcategoria'] ?? item['ramal'] ?? item['nombre_ramal'] ?? 'Principal').toString();
 
           if (numero.isEmpty) continue;
 
@@ -210,6 +214,7 @@ class SyncService {
                     name: item['nombre'] ?? 'Línea $numero',
                   ),
                 );
+            updatedCount++;
           } else {
             lineId = existingLine.id;
           }
@@ -223,14 +228,16 @@ class SyncService {
                   BranchesCompanion.insert(
                     lineId: lineId,
                     name: ramal,
+                    description: Value(item['descripcion']?.toString() ?? item['desc']?.toString()),
                   ),
                 );
-            count++;
+            updatedCount++;
           }
         }
-        return count;
       }
     } catch (_) {}
-    return 0;
+
+    final totalActiveLines = await (db.select(db.lines)..where((l) => l.active.equals(true))).get();
+    return updatedCount > 0 ? updatedCount : totalActiveLines.length;
   }
 }

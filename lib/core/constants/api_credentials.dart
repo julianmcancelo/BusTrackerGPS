@@ -1,6 +1,6 @@
 class LanusCredentials {
   // URLs del Servidor Municipal Lanús Digital
-  static const String defaultServerUrl = 'https://lanusgis-ca546.web.app';
+  static const String defaultServerUrl = 'https://lanus.digital';
   static const String localServerUrl = 'http://10.0.2.2:3000'; // Emulador Android
 
   // Rutas de API
