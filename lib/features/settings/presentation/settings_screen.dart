@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../data/settings_repository.dart';
 import '../../backup/data/backup_service.dart';
+import '../../../core/services/ota_update_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -259,6 +260,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 20),
+          const Text('ACTUALIZACIONES OTA (SHOREBIRD)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
+          const SizedBox(height: 8),
+
+          Builder(
+            builder: (context) {
+              final otaState = ref.watch(otaUpdateProvider);
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.system_update, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Estado de Código OTA (Shorebird)', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  otaState.isShorebirdAvailable
+                                      ? (otaState.currentPatch != null ? 'Parche Instalado: #${otaState.currentPatch}' : 'Versión Base Habilitada')
+                                      : 'Shorebird habilitado en la arquitectura app',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (otaState.message != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            otaState.message!,
+                            style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
+                                  ? null
+                                  : () => ref.read(otaUpdateProvider.notifier).checkForUpdates(),
+                              icon: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.sync),
+                              label: Text(
+                                otaState.status == OtaStatus.checking
+                                    ? 'BUSCANDO...'
+                                    : (otaState.status == OtaStatus.downloading ? 'DESCARGANDO...' : 'BUSCAR PARCHES OTA'),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
