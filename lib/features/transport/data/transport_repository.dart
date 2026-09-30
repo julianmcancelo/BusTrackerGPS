@@ -12,12 +12,23 @@ class TransportRepository {
   final AppDatabase db;
   TransportRepository(this.db);
 
-  Stream<List<LineEntry>> watchAllLines() {
-    return (db.select(db.lines)..where((t) => t.active.equals(true))).watch();
+  Future<void> ensureDefaultTransportDataSeeded() async {
+    await db.seedInitialTransportData();
   }
 
-  Future<List<LineEntry>> getAllLines() {
-    return (db.select(db.lines)..where((t) => t.active.equals(true))).get();
+  Stream<List<LineEntry>> watchAllLines() {
+    return (db.select(db.lines)
+          ..where((t) => t.active.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.number)]))
+        .watch();
+  }
+
+  Future<List<LineEntry>> getAllLines() async {
+    await ensureDefaultTransportDataSeeded();
+    return (db.select(db.lines)
+          ..where((t) => t.active.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.number)]))
+        .get();
   }
 
   Stream<List<BranchEntry>> watchBranchesForLine(int lineId) {
@@ -26,7 +37,7 @@ class TransportRepository {
         .watch();
   }
 
-  Future<List<BranchEntry>> getBranchesForLine(int lineId) {
+  Future<List<BranchEntry>> getBranchesForLine(int lineId) async {
     return (db.select(db.branches)
           ..where((t) => t.lineId.equals(lineId) & t.active.equals(true)))
         .get();

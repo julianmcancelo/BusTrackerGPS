@@ -44,6 +44,11 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
   List<LatLng> _stopPoints = [];
   List<LatLng> _incidentPoints = [];
 
+  BranchDirectionStatus? _directionStatus;
+  List<LatLng> _referenceIdaPoints = [];
+  List<LatLng> _referenceVueltaPoints = [];
+  bool _showReferenceTracks = true;
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -84,6 +89,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         _selectedBranch = branches.isNotEmpty ? branches.first : null;
         _isLoadingTransport = false;
       });
+      await _updateBranchDirectionStatus();
     } else {
       setState(() => _isLoadingTransport = false);
     }
@@ -101,6 +107,56 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
       _selectedBranch = branches.isNotEmpty ? branches.first : null;
       _isLoadingTransport = false;
     });
+    await _updateBranchDirectionStatus();
+  }
+
+  Future<void> _onBranchChanged(BranchEntry? branch) async {
+    if (branch == null) return;
+    setState(() => _selectedBranch = branch);
+    await _updateBranchDirectionStatus();
+  }
+
+  Future<void> _updateBranchDirectionStatus() async {
+    if (_selectedLine == null || _selectedBranch == null) return;
+
+    final tripsRepo = ref.read(tripsRepositoryProvider);
+    final gpsRepo = ref.read(gpsRepositoryProvider);
+
+    final status = await tripsRepo.getBranchDirectionStatus(_selectedLine!.id, _selectedBranch!.id);
+
+    List<LatLng> idaPts = [];
+    List<LatLng> vueltaPts = [];
+
+    if (status.lastIdaTrip != null) {
+      final rawPts = await gpsRepo.getTrackPoints(status.lastIdaTrip!.trip.id);
+      idaPts = rawPts
+          .where((p) => p.quality != 'OUTLIER')
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+    }
+
+    if (status.lastVueltaTrip != null) {
+      final rawPts = await gpsRepo.getTrackPoints(status.lastVueltaTrip!.trip.id);
+      vueltaPts = rawPts
+          .where((p) => p.quality != 'OUTLIER')
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+    }
+
+    if (mounted) {
+      setState(() {
+        _directionStatus = status;
+        _referenceIdaPoints = idaPts;
+        _referenceVueltaPoints = vueltaPts;
+
+        // Auto-select missing direction so user can register immediately
+        if (status.hasIda && !status.hasVuelta) {
+          _direction = 'VUELTA';
+        } else if (status.hasVuelta && !status.hasIda) {
+          _direction = 'IDA';
+        }
+      });
+    }
   }
 
   Future<void> _loadPointsForMap() async {
@@ -436,16 +492,43 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
               ),
+
+              // Reference Polylines for visual trazo comparisons
+              if (_showReferenceTracks) ...[
+                if (_referenceIdaPoints.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _referenceIdaPoints,
+                        strokeWidth: 4.0,
+                        color: Colors.blue.shade800.withOpacity(0.7),
+                      ),
+                    ],
+                  ),
+                if (_referenceVueltaPoints.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _referenceVueltaPoints,
+                        strokeWidth: 4.0,
+                        color: Colors.teal.shade700.withOpacity(0.7),
+                      ),
+                    ],
+                  ),
+              ],
+
+              // Active recording track polyline
               if (_polyPoints.isNotEmpty)
                 PolylineLayer(
                   polylines: [
                     Polyline(
                       points: _polyPoints,
-                      strokeWidth: 5.0,
-                      color: Colors.blue.shade700,
+                      strokeWidth: 5.5,
+                      color: Colors.red.shade700,
                     ),
                   ],
                 ),
+
               MarkerLayer(
                 markers: [
                   if (pos != null)
@@ -483,6 +566,22 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
               ),
             ],
           ),
+
+          // Map Reference Polyline Toggle Overlay Button
+          if (_referenceIdaPoints.isNotEmpty || _referenceVueltaPoints.isNotEmpty)
+            Positioned(
+              top: 100,
+              right: 16,
+              child: FloatingActionButton.small(
+                heroTag: 'toggle_ref_tracks',
+                backgroundColor: _showReferenceTracks ? Colors.indigo : Colors.grey,
+                onPressed: () {
+                  setState(() => _showReferenceTracks = !_showReferenceTracks);
+                },
+                tooltip: 'Ver trazos de referencia previos',
+                child: Icon(_showReferenceTracks ? Icons.layers : Icons.layers_clear, color: Colors.white),
+              ),
+            ),
 
           // Top Status Header / Telemetry Overlay
           SafeArea(
@@ -618,7 +717,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           // Re-center Floating Button
           if (!_autoFollow && pos != null)
             Positioned(
-              bottom: state.status == CaptureStatus.idle ? 250 : 260,
+              bottom: state.status == CaptureStatus.idle ? 270 : 260,
               right: 16,
               child: FloatingActionButton.extended(
                 onPressed: () {
@@ -653,13 +752,81 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                               children: [
                                 const Icon(Icons.directions_bus, color: Colors.blue, size: 22),
                                 const SizedBox(width: 8),
-                                const Text(
-                                  'CONFIGURACIÓN DE RECORRIDO',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
+                                const Expanded(
+                                  child: Text(
+                                    'CONFIGURACIÓN DE RECORRIDO',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
+                                  ),
                                 ),
+                                if (_directionStatus != null) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: _directionStatus!.isComplete ? Colors.green.shade100 : Colors.orange.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _directionStatus!.isComplete ? 'TRAZO COMPLETO ✓' : 'TRAZO EN PROCESO',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: _directionStatus!.isComplete ? Colors.green.shade900 : Colors.orange.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
+
+                            // Recorded Directions Status Badge Row
+                            if (_directionStatus != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _directionStatus!.hasIda ? Icons.check_circle : Icons.pending_outlined,
+                                      size: 16,
+                                      color: _directionStatus!.hasIda ? Colors.green : Colors.orange,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _directionStatus!.hasIda
+                                          ? 'IDA: ${GeoUtils.formatDistance(_directionStatus!.lastIdaTrip!.trip.distanceMeters)}'
+                                          : 'IDA: Pendiente',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: _directionStatus!.hasIda ? Colors.green.shade800 : Colors.orange.shade800,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Icon(
+                                      _directionStatus!.hasVuelta ? Icons.check_circle : Icons.pending_outlined,
+                                      size: 16,
+                                      color: _directionStatus!.hasVuelta ? Colors.green : Colors.orange,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _directionStatus!.hasVuelta
+                                          ? 'VUELTA: ${GeoUtils.formatDistance(_directionStatus!.lastVueltaTrip!.trip.distanceMeters)}'
+                                          : 'VUELTA: Pendiente',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: _directionStatus!.hasVuelta ? Colors.green.shade800 : Colors.orange.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
@@ -698,12 +865,12 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                               child: Text(b.name, overflow: TextOverflow.ellipsis),
                                             ))
                                         .toList(),
-                                    onChanged: (b) => setState(() => _selectedBranch = b),
+                                    onChanged: _onBranchChanged,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
@@ -718,7 +885,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
@@ -748,16 +915,25 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
                             FilledButton.icon(
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(54),
-                                backgroundColor: Colors.green.shade700,
+                                backgroundColor: _directionStatus?.isComplete == true
+                                    ? Colors.blue.shade800
+                                    : (_directionStatus?.hasIda == true && _direction == 'VUELTA'
+                                        ? Colors.teal.shade700
+                                        : Colors.green.shade700),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               ),
                               onPressed: _startCapture,
                               icon: const Icon(Icons.play_arrow, size: 28),
-                              label: const Text('INICIAR CAPTURA DE RECORRIDO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              label: Text(
+                                _directionStatus?.hasIda == true && _direction == 'VUELTA'
+                                    ? 'INICIAR REGISTRO DE VUELTA'
+                                    : 'INICIAR CAPTURA DE RECORRIDO',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ],
                         )

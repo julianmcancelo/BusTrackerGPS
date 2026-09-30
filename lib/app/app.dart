@@ -3,12 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
 import 'theme.dart';
+import '../core/services/ota_update_service.dart';
 
-class BitacoraGpsApp extends ConsumerWidget {
+class BitacoraGpsApp extends ConsumerStatefulWidget {
   const BitacoraGpsApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BitacoraGpsApp> createState() => _BitacoraGpsAppState();
+}
+
+class _BitacoraGpsAppState extends ConsumerState<BitacoraGpsApp> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(otaUpdateProvider.notifier).checkForUpdates();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Bitácora GPS',
       debugShowCheckedModeBanner: false,

@@ -20,6 +20,22 @@ class TripWithDetails {
   });
 }
 
+class BranchDirectionStatus {
+  final bool hasIda;
+  final bool hasVuelta;
+  final TripWithDetails? lastIdaTrip;
+  final TripWithDetails? lastVueltaTrip;
+
+  bool get isComplete => hasIda && hasVuelta;
+
+  BranchDirectionStatus({
+    required this.hasIda,
+    required this.hasVuelta,
+    this.lastIdaTrip,
+    this.lastVueltaTrip,
+  });
+}
+
 class TripsRepository {
   final AppDatabase db;
   final _uuid = const Uuid();
@@ -218,5 +234,39 @@ class TripsRepository {
 
   Future<void> deleteTrip(String tripId) async {
     await (db.delete(db.trips)..where((t) => t.id.equals(tripId))).go();
+  }
+
+  Future<BranchDirectionStatus> getBranchDirectionStatus(int lineId, int branchId) async {
+    final query = db.select(db.trips).join([
+      innerJoin(db.lines, db.lines.id.equalsExp(db.trips.lineId)),
+      innerJoin(db.branches, db.branches.id.equalsExp(db.trips.branchId)),
+    ])..where(db.trips.lineId.equals(lineId) &
+            db.trips.branchId.equals(branchId) &
+            db.trips.status.equals('FINISHED'));
+
+    final rows = await query.get();
+
+    TripWithDetails? lastIda;
+    TripWithDetails? lastVuelta;
+
+    for (final r in rows) {
+      final trip = r.readTable(db.trips);
+      final line = r.readTable(db.lines);
+      final branch = r.readTable(db.branches);
+      final details = TripWithDetails(trip: trip, line: line, branch: branch);
+
+      if (trip.direction == 'IDA' && lastIda == null) {
+        lastIda = details;
+      } else if (trip.direction == 'VUELTA' && lastVuelta == null) {
+        lastVuelta = details;
+      }
+    }
+
+    return BranchDirectionStatus(
+      hasIda: lastIda != null,
+      hasVuelta: lastVuelta != null,
+      lastIdaTrip: lastIda,
+      lastVueltaTrip: lastVuelta,
+    );
   }
 }

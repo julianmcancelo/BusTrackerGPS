@@ -55,83 +55,102 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('CREATE INDEX idx_trips_started_at ON trips (started_at);');
           await customStatement('CREATE INDEX idx_trips_line_id ON trips (line_id);');
 
-          await _seedInitialTransportData();
+          await seedInitialTransportData();
         },
       );
 
-  Future<void> _seedInitialTransportData() async {
-    final line526Id = await into(lines).insert(
-      LinesCompanion.insert(
-        number: '526',
-        name: 'Línea 526 (Lanús - Terminal)',
-      ),
-    );
+  Future<void> seedInitialTransportData() async {
+    final defaultLines = [
+      {
+        'number': '520',
+        'name': 'Línea 520 (MOASA - Lanús / Villa Caraza)',
+        'branches': [
+          {'name': 'Ramal B', 'desc': 'Estación Lanús - Villa Caraza'},
+          {'name': 'Ramal B2', 'desc': 'Hospital Interzonal (Evita) - Villa Caraza'},
+          {'name': 'Ramal C', 'desc': 'Estación Lanús - Villa Caraza (por Barrio Eva Perón)'},
+          {'name': 'Ramal D', 'desc': 'Ex Línea 529 (Conexiones Lanús Oeste)'},
+        ]
+      },
+      {
+        'number': '521',
+        'name': 'Línea 521 (MOESA - Lanús / Villa Obrera)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Villa Obrera (por Bv. Martín Rodríguez y Eva Perón)'},
+        ]
+      },
+      {
+        'number': '522',
+        'name': 'Línea 522 (El Urbano - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Cnel. Lynch y Caaguazú (Monte Chingolo)'},
+        ]
+      },
+      {
+        'number': '523',
+        'name': 'Línea 523 (Cía. Andrade - Lanús / Escalada)',
+        'branches': [
+          {'name': 'Principal (Unión Comunal)', 'desc': 'Estación Lanús - Estación Remedios de Escalada'},
+        ]
+      },
+      {
+        'number': '524',
+        'name': 'Línea 524 (5 de Agosto - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Charcas y Cno. Gral. Belgrano (por Centenario)'},
+        ]
+      },
+      {
+        'number': '526',
+        'name': 'Línea 526 (MOESA - Lanús / Villa Ofelia)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Villa Ofelia (por H. Guidi, 9 de Julio y Kloosterman)'},
+        ]
+      },
+      {
+        'number': '527',
+        'name': 'Línea 527 (El Urbano - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Ramal B (Corina por Cadorna)', 'desc': 'Estación Lanús - Cno. Gral. Belgrano y Av. Fabián Onsari'},
+          {'name': 'Ramal C (Hospital Evita)', 'desc': 'Estación Lanús - Hospital Evita / Roma y Lynch'},
+          {'name': 'Ramal C (ex 522)', 'desc': 'Estación Lanús - Estación Monte Chingolo - Cnel. Lynch'},
+        ]
+      },
+    ];
 
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line526Id,
-        name: 'Principal',
-        description: const Value('Recorrido principal Lanús Centro - Terminal'),
-      ),
-    );
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line526Id,
-        name: 'Hospital',
-        description: const Value('Ramal Hospital Evita'),
-      ),
-    );
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line526Id,
-        name: 'Terminal',
-        description: const Value('Ramal directo a Terminal'),
-      ),
-    );
+    for (final lineData in defaultLines) {
+      final number = lineData['number'] as String;
+      final name = lineData['name'] as String;
+      final branchesList = lineData['branches'] as List<Map<String, String>>;
 
-    final line524Id = await into(lines).insert(
-      LinesCompanion.insert(
-        number: '524',
-        name: 'Línea 524 (Monte Chingolo - Est. Lanús)',
-      ),
-    );
+      final existing = await (select(lines)..where((t) => t.number.equals(number))).getSingleOrNull();
 
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line524Id,
-        name: 'Principal',
-        description: const Value('Monte Chingolo por Lynch'),
-      ),
-    );
+      int lineId;
+      if (existing == null) {
+        lineId = await into(lines).insert(
+          LinesCompanion.insert(
+            number: number,
+            name: name,
+          ),
+        );
+      } else {
+        lineId = existing.id;
+      }
 
-    final line500Id = await into(lines).insert(
-      LinesCompanion.insert(
-        number: '500',
-        name: 'Línea 500 (Lanús - Est. Escalada)',
-      ),
-    );
-
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line500Id,
-        name: 'Est. Escalada',
-        description: const Value('Ramal Remedios de Escalada'),
-      ),
-    );
-
-    final line283Id = await into(lines).insert(
-      LinesCompanion.insert(
-        number: '283',
-        name: 'Línea 283 (Lanús - Pompeya)',
-      ),
-    );
-
-    await into(branches).insert(
-      BranchesCompanion.insert(
-        lineId: line283Id,
-        name: 'Pompeya',
-        description: const Value('Ramal Puente Alsina / Pompeya'),
-      ),
-    );
+      final existingBranches = await (select(branches)..where((t) => t.lineId.equals(lineId))).get();
+      for (final bData in branchesList) {
+        final bName = bData['name']!;
+        final bDesc = bData['desc'];
+        final bExists = existingBranches.any((b) => b.name == bName);
+        if (!bExists) {
+          await into(branches).insert(
+            BranchesCompanion.insert(
+              lineId: lineId,
+              name: bName,
+              description: Value(bDesc),
+            ),
+          );
+        }
+      }
+    }
   }
 }
