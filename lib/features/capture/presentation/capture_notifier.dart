@@ -11,11 +11,13 @@ import '../../trips/data/trips_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/utils/haptics_utils.dart';
+import '../../../core/permissions/permissions_handler.dart';
 
 final captureNotifierProvider = NotifierProvider<CaptureNotifier, CaptureState>(CaptureNotifier.new);
 
 class CaptureNotifier extends Notifier<CaptureState> {
   StreamSubscription<Position>? _positionSub;
+  StreamSubscription<Position>? _idleLocationSub;
   Timer? _timer;
   DateTime? _stoppedSince;
 
@@ -27,10 +29,39 @@ class CaptureNotifier extends Notifier<CaptureState> {
   CaptureState build() {
     ref.onDispose(() {
       _positionSub?.cancel();
+      _idleLocationSub?.cancel();
       _timer?.cancel();
     });
     checkActiveTripRecovery();
+    _startIdleLocationStream();
     return const CaptureState();
+  }
+
+  Future<void> _startIdleLocationStream() async {
+    try {
+      final hasPerms = await AppPermissionsHandler.checkAndRequestLocationPermissions();
+      if (!hasPerms) return;
+
+      final initialPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      state = state.copyWith(currentPosition: initialPos);
+
+      _idleLocationSub = Geolocator.getPositionStream(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+          intervalDuration: const Duration(seconds: 1),
+        ),
+      ).listen((pos) {
+        if (state.status == CaptureStatus.idle) {
+          state = state.copyWith(
+            currentPosition: pos,
+            gpsSignalQuality: pos.accuracy <= 15 ? 'EXCELLENT' : (pos.accuracy <= 30 ? 'GOOD' : 'LOW'),
+          );
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> checkActiveTripRecovery() async {
@@ -79,7 +110,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
             avgSpeedKmh: activeTrip.averageSpeedKmh,
             maxSpeedKmh: activeTrip.maxSpeedKmh,
             lastAcceptedPosition: lastPos,
-            currentPosition: lastPos,
+            currentPosition: lastPos ?? state.currentPosition,
           );
 
           if (activeTrip.status == 'ACTIVE') {
@@ -166,7 +197,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
       );
 
       await FlutterForegroundTask.startService(
-        notificationTitle: '🚍 Bitácora GPS',
+        notificationTitle: 'NSE Bitácora GPS',
         notificationText: '${state.line?.number ?? ''} · ${state.branch?.name ?? ''} · ${state.direction}',
         callback: startCallback,
       );
@@ -177,10 +208,9 @@ class CaptureNotifier extends Notifier<CaptureState> {
 
   Future<void> _startTrackingStreams(String tripId) async {
     await _positionSub?.cancel();
+    await _idleLocationSub?.cancel();
     _timer?.cancel();
 
-    final intervalSec = await settingsRepo.getGpsIntervalSeconds();
-    final minDist = await settingsRepo.getGpsMinDistance();
     final maxAccuracy = await settingsRepo.getGpsMaxAccuracy();
     final autoStopEnabled = await settingsRepo.getAutoStopEnabled();
     final autoStopMinSec = await settingsRepo.getAutoStopMinSeconds();
@@ -188,8 +218,8 @@ class CaptureNotifier extends Notifier<CaptureState> {
 
     final locationSettings = AndroidSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: minDist.round(),
-      intervalDuration: Duration(seconds: intervalSec),
+      distanceFilter: 0,
+      intervalDuration: const Duration(seconds: 1),
     );
 
     _positionSub = Geolocator.getPositionStream(locationSettings: locationSettings)
@@ -476,6 +506,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
     final finishedTripId = state.tripId;
 
     state = const CaptureState(status: CaptureStatus.idle);
+    _startIdleLocationStream();
 
     final haptics = await settingsRepo.getHapticsEnabled();
     HapticsUtils.vibrateSuccess(enabled: haptics);

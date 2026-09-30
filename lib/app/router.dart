@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
 
-import '../features/capture/presentation/setup_screen.dart';
+import '../features/capture/presentation/main_map_screen.dart';
 import '../features/capture/presentation/capture_screen.dart';
 import '../features/trips/presentation/trip_list_screen.dart';
 import '../features/trips/presentation/trip_detail_screen.dart';
@@ -13,8 +13,8 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      name: 'setup',
-      builder: (context, state) => const SetupScreen(),
+      name: 'home',
+      builder: (context, state) => const MainMapScreen(),
     ),
     GoRoute(
       path: '/capture',

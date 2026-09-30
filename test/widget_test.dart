@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bitacora_gps/app/app.dart';
 
 void main() {
-  testWidgets('App renders setup screen smoke test', (WidgetTester tester) async {
+  testWidgets('App renders main map screen smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: BitacoraGpsApp(),

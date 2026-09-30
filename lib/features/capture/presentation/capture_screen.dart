@@ -294,7 +294,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                     children: [
                       TileLayer(
                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.bitacoragps.app',
+                        userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
+                        tileBuilder: (context, tileWidget, tile) {
+                          return tileWidget;
+                        },
                       ),
                       PolylineLayer(
                         polylines: [

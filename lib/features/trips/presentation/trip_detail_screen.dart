@@ -209,6 +209,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
                 ),
                 PolylineLayer(
                   polylines: [
