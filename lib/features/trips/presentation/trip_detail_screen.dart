@@ -89,6 +89,40 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     await ExportService.shareFile(zipFile, text: 'Recorrido ${_details!.line.number} ZIP');
   }
 
+  Future<void> _confirmDelete() async {
+    if (_details == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Recorrido'),
+        content: Text(
+          '¿Está seguro de que desea eliminar permanentemente este recorrido de la Línea ${_details!.line.number} (${_details!.branch.name})?\n\nEsta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCELAR'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ELIMINAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(tripsRepositoryProvider).deleteTrip(widget.tripId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recorrido eliminado')),
+        );
+        context.pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -124,6 +158,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               icon: const Icon(Icons.share),
               onPressed: _exportZip,
               tooltip: 'Exportar ZIP',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+              onPressed: _confirmDelete,
+              tooltip: 'Eliminar Recorrido',
             ),
           ],
           bottom: const TabBar(

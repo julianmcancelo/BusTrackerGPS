@@ -60,6 +60,41 @@ class _TripListScreenState extends ConsumerState<TripListScreen> {
     }
   }
 
+  Future<void> _confirmDeleteTrip(TripWithDetails item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Recorrido'),
+        content: Text(
+          '¿Está seguro de que desea eliminar la traza grabada de la Línea ${item.line.number} (${item.branch.name})?\n\nEsta acción borrará los puntos GPS, paradas e incidencias asociadas localmente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCELAR'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ELIMINAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(tripsRepositoryProvider).deleteTrip(item.trip.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recorrido ${item.line.number} eliminado'),
+            backgroundColor: Colors.grey.shade800,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsRepo = ref.watch(tripsRepositoryProvider);
@@ -199,7 +234,17 @@ class _TripListScreenState extends ConsumerState<TripListScreen> {
                             ),
                           ],
                         ),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                              tooltip: 'Eliminar traza',
+                              onPressed: () => _confirmDeleteTrip(item),
+                            ),
+                            const Icon(Icons.chevron_right),
+                          ],
+                        ),
                         onTap: () {
                           context.push('/trips/${t.id}');
                         },

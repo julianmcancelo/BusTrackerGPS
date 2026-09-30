@@ -233,6 +233,10 @@ class TripsRepository {
   }
 
   Future<void> deleteTrip(String tripId) async {
+    await (db.delete(db.trackPoints)..where((t) => t.tripId.equals(tripId))).go();
+    await (db.delete(db.stops)..where((t) => t.tripId.equals(tripId))).go();
+    await (db.delete(db.incidents)..where((t) => t.tripId.equals(tripId))).go();
+    await (db.delete(db.attachments)..where((t) => t.tripId.equals(tripId))).go();
     await (db.delete(db.trips)..where((t) => t.id.equals(tripId))).go();
   }
 
