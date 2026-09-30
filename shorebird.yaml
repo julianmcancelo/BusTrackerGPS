@@ -1,0 +1,3 @@
+# Shorebird Code Push Configuration
+app_id: "bitacora-gps-flutter"
+auto_update: true

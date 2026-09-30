@@ -5,6 +5,7 @@ class AppPermissionsHandler {
   static Future<bool> checkAndRequestLocationPermissions() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
       return false;
     }
 
@@ -17,6 +18,7 @@ class AppPermissionsHandler {
     }
 
     if (permission == LocationPermission.deniedForever) {
+      await Geolocator.openAppSettings();
       return false;
     }
 

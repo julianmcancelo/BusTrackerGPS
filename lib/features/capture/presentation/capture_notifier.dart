@@ -52,6 +52,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
           accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: 0,
           intervalDuration: const Duration(seconds: 1),
+          forceLocationManager: true,
         ),
       ).listen((pos) {
         if (state.status == CaptureStatus.idle) {
@@ -220,6 +221,7 @@ class CaptureNotifier extends Notifier<CaptureState> {
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 0,
       intervalDuration: const Duration(seconds: 1),
+      forceLocationManager: true,
     );
 
     _positionSub = Geolocator.getPositionStream(locationSettings: locationSettings)

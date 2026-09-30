@@ -22,7 +22,7 @@ class MainMapScreen extends ConsumerStatefulWidget {
   ConsumerState<MainMapScreen> createState() => _MainMapScreenState();
 }
 
-class _MainMapScreenState extends ConsumerState<MainMapScreen> {
+class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final MediaService _mediaService = MediaService();
 
@@ -44,11 +44,31 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
   List<LatLng> _stopPoints = [];
   List<LatLng> _incidentPoints = [];
 
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
     _loadTransportData();
     _loadPointsForMap();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _internalController.dispose();
+    _domainController.dispose();
+    _driverController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTransportData() async {
@@ -172,9 +192,32 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
       setState(() => _isRecordingAudio = true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎤 Grabando audio... Pulse de nuevo para finalizar')),
+          const SnackBar(content: Text('Grabando audio... Pulse de nuevo para finalizar')),
         );
       }
+    }
+  }
+
+  IconData _getIncidentIcon(IncidentType type) {
+    switch (type) {
+      case IncidentType.obra:
+        return Icons.construction;
+      case IncidentType.corte:
+        return Icons.block;
+      case IncidentType.desvio:
+        return Icons.alt_route;
+      case IncidentType.transito:
+        return Icons.traffic;
+      case IncidentType.parada:
+        return Icons.hail;
+      case IncidentType.calzada:
+        return Icons.warning_amber_rounded;
+      case IncidentType.unidad:
+        return Icons.directions_bus;
+      case IncidentType.accidente:
+        return Icons.car_crash;
+      case IncidentType.otro:
+        return Icons.more_horiz;
     }
   }
 
@@ -190,7 +233,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('SELECCIONAR INCIDENCIA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text('REGISTRAR INCIDENCIA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
               const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
@@ -213,9 +256,9 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(type.iconEmoji, style: const TextStyle(fontSize: 28)),
-                          const SizedBox(height: 4),
-                          Text(type.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                          Icon(_getIncidentIcon(type), size: 28, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(height: 6),
+                          Text(type.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                         ],
                       ),
                     ),
@@ -380,16 +423,16 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
                   if (pos != null)
                     Marker(
                       point: currentLatLng,
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       child: Container(
                         decoration: BoxDecoration(
                           color: state.status == CaptureStatus.active ? Colors.blue.shade800 : Colors.green.shade700,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
+                          boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6)],
                         ),
-                        child: const Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                        child: const Icon(Icons.directions_bus, color: Colors.white, size: 22),
                       ),
                     ),
                   ..._stopPoints.map(
@@ -413,174 +456,133 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
             ],
           ),
 
-          // Top Header Overlay Card with Drawer button
+          // Top Header / Telemetry Bar Overlay
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Card(
-                      elevation: 6,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: Theme.of(context).cardColor,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(
-                          children: [
-                            Builder(
-                              builder: (ctx) => IconButton(
-                                icon: const Icon(Icons.menu, size: 28),
-                                onPressed: () => Scaffold.of(ctx).openDrawer(),
-                              ),
-                            ),
-                            Expanded(
-                              child: state.status == CaptureStatus.idle
-                                  ? Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                        Text(
-                                          pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
-                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                        ),
-                                      ],
-                                    )
-                                  : Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '${state.line?.number ?? ''} · ${state.branch?.name ?? ''} (${state.direction})',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                        Text(
-                                          '${GeoUtils.formatDuration(Duration(seconds: state.elapsedSeconds))} · ${GeoUtils.formatDistance(state.totalDistanceMeters)} · ${state.currentSpeedKmh.toStringAsFixed(1)} km/h',
-                                          style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                            IconButton(
-                              icon: Icon(_autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.blue),
-                              onPressed: () {
-                                setState(() => _autoFollow = !_autoFollow);
-                                if (_autoFollow && pos != null) {
-                                  _mapController.move(currentLatLng, _mapController.camera.zoom);
-                                }
-                              },
-                              tooltip: 'Seguir GPS',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Setup controls when Idle
-                    if (state.status == CaptureStatus.idle && !_isLoadingTransport) ...[
-                      const SizedBox(height: 8),
-                      Card(
-                        elevation: 6,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<LineEntry>(
-                                      value: _selectedLine,
-                                      isDense: true,
-                                      decoration: const InputDecoration(labelText: 'Línea', border: OutlineInputBorder()),
-                                      items: _lines.map((l) => DropdownMenuItem(value: l, child: Text(l.number))).toList(),
-                                      onChanged: _onLineChanged,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: DropdownButtonFormField<BranchEntry>(
-                                      value: _selectedBranch,
-                                      isDense: true,
-                                      decoration: const InputDecoration(labelText: 'Ramal', border: OutlineInputBorder()),
-                                      items: _branches.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
-                                      onChanged: (b) => setState(() => _selectedBranch = b),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SegmentedButton<String>(
-                                      segments: const [
-                                        ButtonSegment(value: 'IDA', label: Text('IDA')),
-                                        ButtonSegment(value: 'VUELTA', label: Text('VUELTA')),
-                                      ],
-                                      selected: {_direction},
-                                      onSelectionChanged: (set) => setState(() => _direction = set.first),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  FilledButton.icon(
-                                    style: FilledButton.styleFrom(backgroundColor: Colors.green.shade700, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-                                    onPressed: _startCapture,
-                                    icon: const Icon(Icons.play_arrow),
-                                    label: const Text('INICIAR', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
-                            ],
+                child: Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      children: [
+                        Builder(
+                          builder: (ctx) => IconButton(
+                            icon: const Icon(Icons.menu, size: 28),
+                            onPressed: () => Scaffold.of(ctx).openDrawer(),
                           ),
                         ),
-                      ),
-                    ],
-
-                    // Auto Stop banner overlay
-                    if (state.possibleStopDetected) ...[
-                      const SizedBox(height: 8),
-                      Card(
-                        color: Colors.amber.shade200,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.location_on, color: Colors.amber),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '🟡 POSIBLE PARADA (${state.possibleStopSeconds}s)',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                        Expanded(
+                          child: state.status == CaptureStatus.idle
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    Text(
+                                      pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
+                                      style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        FadeTransition(
+                                          opacity: _pulseAnimation,
+                                          child: Container(
+                                            width: 10,
+                                            height: 10,
+                                            margin: const EdgeInsets.only(right: 6),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          'REC · LÍNEA ${state.line?.number ?? ''}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${state.branch?.name ?? ''} (${state.direction})',
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${GeoUtils.formatDistance(state.totalDistanceMeters)} · ${state.currentSpeedKmh.toStringAsFixed(0)} km/h · ${state.pointCount} pts · ${GeoUtils.formatDuration(Duration(seconds: state.elapsedSeconds))}',
+                                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              TextButton(
-                                onPressed: () => ref.read(captureNotifierProvider.notifier).confirmAutoStop(),
-                                child: const Text('CONFIRMAR'),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () => ref.read(captureNotifierProvider.notifier).ignoreAutoStop(),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    ],
-                  ],
+                        IconButton(
+                          icon: Icon(_autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.blue),
+                          onPressed: () {
+                            setState(() => _autoFollow = !_autoFollow);
+                            if (_autoFollow && pos != null) {
+                              _mapController.move(currentLatLng, _mapController.camera.zoom);
+                            }
+                          },
+                          tooltip: 'Seguir GPS',
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Floating Re-center button
+          // Auto Stop Banner Overlay
+          if (state.possibleStopDetected)
+            Positioned(
+              top: 90,
+              left: 16,
+              right: 16,
+              child: Card(
+                color: Colors.amber.shade200,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'POSIBLE PARADA (${state.possibleStopSeconds}s)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => ref.read(captureNotifierProvider.notifier).confirmAutoStop(),
+                        child: const Text('CONFIRMAR'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => ref.read(captureNotifierProvider.notifier).ignoreAutoStop(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Re-center Floating Button
           if (!_autoFollow && pos != null)
             Positioned(
-              bottom: state.status == CaptureStatus.active ? 220 : 30,
+              bottom: state.status == CaptureStatus.idle ? 220 : 250,
               right: 16,
               child: FloatingActionButton.extended(
                 onPressed: () {
@@ -588,112 +590,192 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> {
                   _mapController.move(currentLatLng, _mapController.camera.zoom);
                 },
                 icon: const Icon(Icons.my_location),
-                label: const Text('VOLVER A UBICACIÓN'),
+                label: const Text('CENTRAR GPS'),
               ),
             ),
 
-          // Floating Action Controls Panel at bottom during Capture
-          if (state.status == CaptureStatus.active || state.status == CaptureStatus.paused)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SafeArea(
-                child: Container(
-                  margin: const EdgeInsets.all(12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 10, offset: Offset(0, 4))],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Large PARADA Button
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(54),
-                          backgroundColor: Colors.red.shade700,
-                        ),
-                        onPressed: () async {
-                          await ref.read(captureNotifierProvider.notifier).addManualStop();
-                          _loadPointsForMap();
-                        },
-                        icon: const Icon(Icons.location_on, size: 28),
-                        label: const Text('📍 REGISTRAR PARADA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _showIncidentPicker,
-                              icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                              label: const Text('⚠ INCIDENCIA', style: TextStyle(fontSize: 12)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _handleTakePhoto,
-                              icon: const Icon(Icons.camera_alt, size: 18),
-                              label: const Text('📷 FOTO', style: TextStyle(fontSize: 12)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: _isRecordingAudio ? Colors.red.shade100 : null,
-                              ),
-                              onPressed: _handleToggleAudio,
-                              icon: Icon(Icons.mic, color: _isRecordingAudio ? Colors.red : null, size: 18),
-                              label: Text(_isRecordingAudio ? '⏹ STOP' : '🎤 AUDIO', style: const TextStyle(fontSize: 12)),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: state.status == CaptureStatus.paused ? Colors.green : Colors.amber.shade800,
-                              ),
-                              onPressed: () {
-                                if (state.status == CaptureStatus.paused) {
-                                  ref.read(captureNotifierProvider.notifier).resumeCapture();
-                                } else {
-                                  ref.read(captureNotifierProvider.notifier).pauseCapture();
-                                }
-                              },
-                              icon: Icon(state.status == CaptureStatus.paused ? Icons.play_arrow : Icons.pause, color: Colors.white, size: 18),
-                              label: Text(
-                                state.status == CaptureStatus.paused ? 'REANUDAR' : 'PAUSAR',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade900),
-                              onPressed: _confirmFinish,
-                              icon: const Icon(Icons.stop, color: Colors.white, size: 18),
-                              label: const Text('FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          // Bottom Quick Action Panel
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12, offset: Offset(0, 4))],
                 ),
+                child: state.status == CaptureStatus.idle
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<LineEntry>(
+                                  value: _selectedLine,
+                                  isDense: true,
+                                  decoration: const InputDecoration(labelText: 'Línea', border: OutlineInputBorder()),
+                                  items: _lines.map((l) => DropdownMenuItem(value: l, child: Text(l.number))).toList(),
+                                  onChanged: _onLineChanged,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: DropdownButtonFormField<BranchEntry>(
+                                  value: _selectedBranch,
+                                  isDense: true,
+                                  decoration: const InputDecoration(labelText: 'Ramal', border: OutlineInputBorder()),
+                                  items: _branches.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
+                                  onChanged: (b) => setState(() => _selectedBranch = b),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SegmentedButton<String>(
+                                  segments: const [
+                                    ButtonSegment(value: 'IDA', label: Text('IDA')),
+                                    ButtonSegment(value: 'VUELTA', label: Text('VUELTA')),
+                                  ],
+                                  selected: {_direction},
+                                  onSelectionChanged: (set) => setState(() => _direction = set.first),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _internalController,
+                                  decoration: const InputDecoration(labelText: 'Interno (opcional)', isDense: true, border: OutlineInputBorder()),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _domainController,
+                                  decoration: const InputDecoration(labelText: 'Dominio (opcional)', isDense: true, border: OutlineInputBorder()),
+                                  textCapitalization: TextCapitalization.characters,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56),
+                              backgroundColor: Colors.green.shade700,
+                            ),
+                            onPressed: _startCapture,
+                            icon: const Icon(Icons.play_arrow, size: 32),
+                            label: const Text('INICIAR CAPTURA DE RECORRIDO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Primary PARADA Button
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56),
+                              backgroundColor: Colors.red.shade700,
+                            ),
+                            onPressed: () async {
+                              await ref.read(captureNotifierProvider.notifier).addManualStop();
+                              _loadPointsForMap();
+                            },
+                            icon: const Icon(Icons.location_on, size: 28),
+                            label: const Text('REGISTRAR PARADA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                                  onPressed: _showIncidentPicker,
+                                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                                  label: const Text('INCIDENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                                  onPressed: _handleTakePhoto,
+                                  icon: const Icon(Icons.camera_alt, size: 18),
+                                  label: const Text('FOTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    backgroundColor: _isRecordingAudio ? Colors.red.shade100 : null,
+                                  ),
+                                  onPressed: _handleToggleAudio,
+                                  icon: Icon(Icons.mic, color: _isRecordingAudio ? Colors.red : null, size: 18),
+                                  label: Text(_isRecordingAudio ? 'PARAR' : 'AUDIO', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    backgroundColor: state.status == CaptureStatus.paused ? Colors.green : Colors.amber.shade800,
+                                  ),
+                                  onPressed: () {
+                                    if (state.status == CaptureStatus.paused) {
+                                      ref.read(captureNotifierProvider.notifier).resumeCapture();
+                                    } else {
+                                      ref.read(captureNotifierProvider.notifier).pauseCapture();
+                                    }
+                                  },
+                                  icon: Icon(state.status == CaptureStatus.paused ? Icons.play_arrow : Icons.pause, color: Colors.white, size: 18),
+                                  label: Text(
+                                    state.status == CaptureStatus.paused ? 'REANUDAR' : 'PAUSAR',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    backgroundColor: Colors.red.shade900,
+                                  ),
+                                  onPressed: _confirmFinish,
+                                  icon: const Icon(Icons.stop, color: Colors.white, size: 18),
+                                  label: const Text('FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
               ),
             ),
+          ),
         ],
       ),
     );
