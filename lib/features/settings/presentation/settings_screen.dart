@@ -118,6 +118,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Widget _buildSectionHeader(IconData icon, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4, right: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -130,212 +155,291 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AJUSTES Y CONFIGURACIÓN'),
+        centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text('GPS Y CAPTURA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-          const SizedBox(height: 8),
-
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  title: const Text('Intervalo de Lectura GPS'),
-                  subtitle: Text('$_gpsInterval segundos'),
-                  trailing: DropdownButton<int>(
-                    value: _gpsInterval,
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('1 s (Alta prec.)')),
-                      DropdownMenuItem(value: 2, child: Text('2 s (Recomendado)')),
-                      DropdownMenuItem(value: 5, child: Text('5 s (Equilibrado)')),
-                      DropdownMenuItem(value: 10, child: Text('10 s (Ahorro)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _gpsInterval = val);
-                        _saveSetting('gps_interval_seconds', val.toString());
-                      }
-                    },
-                  ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            children: [
+              // Section 1: GPS
+              _buildSectionHeader(Icons.gps_fixed, 'GPS Y CAPTURA DE TRACKS', 'Configuración de frecuencia y precisión'),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.timer_outlined, color: Colors.blue),
+                      title: const Text('Intervalo de Lectura GPS'),
+                      subtitle: Text('Actualización cada $_gpsInterval segundo(s)'),
+                      trailing: DropdownButton<int>(
+                        value: _gpsInterval,
+                        borderRadius: BorderRadius.circular(12),
+                        items: const [
+                          DropdownMenuItem(value: 1, child: Text('1 s (Alta prec.)')),
+                          DropdownMenuItem(value: 2, child: Text('2 s (Recomendado)')),
+                          DropdownMenuItem(value: 5, child: Text('5 s (Equilibrado)')),
+                          DropdownMenuItem(value: 10, child: Text('10 s (Ahorro)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _gpsInterval = val);
+                            _saveSetting('gps_interval_seconds', val.toString());
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.filter_alt_outlined, color: Colors.blue),
+                      title: const Text('Distancia Mínima de Filtrado'),
+                      subtitle: Text('${_minDistance.toStringAsFixed(0)} metros'),
+                      trailing: SizedBox(
+                        width: 140,
+                        child: Slider(
+                          value: _minDistance,
+                          min: 1.0,
+                          max: 20.0,
+                          divisions: 19,
+                          onChanged: (val) {
+                            setState(() => _minDistance = val);
+                            _saveSetting('gps_min_distance', val.toString());
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  title: const Text('Distancia Mínima de Filtrado'),
-                  subtitle: Text('${_minDistance.toStringAsFixed(0)} metros'),
-                  trailing: Slider(
-                    value: _minDistance,
-                    min: 1.0,
-                    max: 20.0,
-                    divisions: 19,
-                    onChanged: (val) {
-                      setState(() => _minDistance = val);
-                      _saveSetting('gps_min_distance', val.toString());
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          const SizedBox(height: 20),
-          const Text('DETECCIÓN DE PARADAS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-          const SizedBox(height: 8),
-
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Detectar Paradas Automáticamente'),
-                  subtitle: const Text('Alertar cuando la unidad permanece detenida'),
-                  value: _autoStopEnabled,
-                  onChanged: (val) {
-                    setState(() => _autoStopEnabled = val);
-                    _saveSetting('auto_stop_enabled', val.toString());
-                  },
-                ),
-                if (_autoStopEnabled) ...[
-                  const Divider(height: 1),
-                  ListTile(
-                    title: const Text('Tiempo Mínimo de Detención'),
-                    subtitle: Text('$_autoStopMinSeconds segundos'),
-                    trailing: DropdownButton<int>(
-                      value: _autoStopMinSeconds,
-                      items: const [
-                        DropdownMenuItem(value: 15, child: Text('15 s')),
-                        DropdownMenuItem(value: 20, child: Text('20 s')),
-                        DropdownMenuItem(value: 30, child: Text('30 s')),
-                        DropdownMenuItem(value: 60, child: Text('60 s')),
-                      ],
+              // Section 2: Auto Stop
+              _buildSectionHeader(Icons.motion_photos_paused_outlined, 'DETECCIÓN DE PARADAS', 'Alertas automáticas al detener la unidad'),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.hail, color: Colors.orange),
+                      title: const Text('Detección Automática de Paradas'),
+                      subtitle: const Text('Notificar cuando el colectivo permanece detenido'),
+                      value: _autoStopEnabled,
                       onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _autoStopMinSeconds = val);
-                          _saveSetting('auto_stop_min_seconds', val.toString());
-                        }
+                        setState(() => _autoStopEnabled = val);
+                        _saveSetting('auto_stop_enabled', val.toString());
                       },
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-          const Text('INTERFAZ Y FEEDBACK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-          const SizedBox(height: 8),
-
-          Card(
-            child: SwitchListTile(
-              title: const Text('Vibración (Haptics)'),
-              subtitle: const Text('Vibrar al marcar paradas e incidencias'),
-              value: _hapticsEnabled,
-              onChanged: (val) {
-                setState(() => _hapticsEnabled = val);
-                _saveSetting('haptics_enabled', val.toString());
-              },
-            ),
-          ),
-
-          const SizedBox(height: 20),
-          const Text('COPIA DE SEGURIDAD (BACKUP)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-          const SizedBox(height: 8),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: Colors.indigo),
-                    onPressed: _createBackup,
-                    icon: const Icon(Icons.backup),
-                    label: const Text('EXPORTAR BACKUP COMPLETO'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _restoreBackup,
-                    icon: const Icon(Icons.restore),
-                    label: const Text('IMPORTAR BACKUP COMPLETO'),
-                  ),
-                ],
+                    if (_autoStopEnabled) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.access_time, color: Colors.orange),
+                        title: const Text('Tiempo Mínimo de Detención'),
+                        subtitle: Text('Detención confirmada tras $_autoStopMinSeconds s'),
+                        trailing: DropdownButton<int>(
+                          value: _autoStopMinSeconds,
+                          borderRadius: BorderRadius.circular(12),
+                          items: const [
+                            DropdownMenuItem(value: 15, child: Text('15 seg')),
+                            DropdownMenuItem(value: 20, child: Text('20 seg')),
+                            DropdownMenuItem(value: 30, child: Text('30 seg')),
+                            DropdownMenuItem(value: 60, child: Text('60 seg')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _autoStopMinSeconds = val);
+                              _saveSetting('auto_stop_min_seconds', val.toString());
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text('ACTUALIZACIONES OTA (SHOREBIRD)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-          const SizedBox(height: 8),
 
-          Builder(
-            builder: (context) {
-              final otaState = ref.watch(otaUpdateProvider);
-              return Card(
+              // Section 3: Feedback
+              _buildSectionHeader(Icons.vibration, 'INTERFAZ Y FEEDBACK', 'Vibración y experiencia táctil'),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: SwitchListTile(
+                  secondary: const Icon(Icons.touch_app, color: Colors.teal),
+                  title: const Text('Respuesta Háptica (Vibración)'),
+                  subtitle: const Text('Vibrar al capturar paradas, fotos e incidencias'),
+                  value: _hapticsEnabled,
+                  onChanged: (val) {
+                    setState(() => _hapticsEnabled = val);
+                    _saveSetting('haptics_enabled', val.toString());
+                  },
+                ),
+              ),
+
+              // Section 4: Backup
+              _buildSectionHeader(Icons.cloud_upload_outlined, 'COPIA DE SEGURIDAD (BACKUP)', 'Resguardo local de la base de datos y multimedia'),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.system_update, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth > 400) {
+                            return Row(
                               children: [
-                                const Text('Estado de Código OTA (Shorebird)', style: TextStyle(fontWeight: FontWeight.bold)),
-                                Text(
-                                  otaState.isShorebirdAvailable
-                                      ? (otaState.currentPatch != null ? 'Parche Instalado: #${otaState.currentPatch}' : 'Versión Base Habilitada')
-                                      : 'Shorebird habilitado en la arquitectura app',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    style: FilledButton.styleFrom(backgroundColor: Colors.indigo, padding: const EdgeInsets.symmetric(vertical: 14)),
+                                    onPressed: _createBackup,
+                                    icon: const Icon(Icons.backup),
+                                    label: const Text('EXPORTAR BACKUP'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                                    onPressed: _restoreBackup,
+                                    icon: const Icon(Icons.restore),
+                                    label: const Text('IMPORTAR BACKUP'),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (otaState.message != null) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            otaState.message!,
-                            style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
-                                  ? null
-                                  : () => ref.read(otaUpdateProvider.notifier).checkForUpdates(),
-                              icon: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
-                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Icon(Icons.sync),
-                              label: Text(
-                                otaState.status == OtaStatus.checking
-                                    ? 'BUSCANDO...'
-                                    : (otaState.status == OtaStatus.downloading ? 'DESCARGANDO...' : 'BUSCAR PARCHES OTA'),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.indigo,
+                                  minimumSize: const Size.fromHeight(48),
+                                ),
+                                onPressed: _createBackup,
+                                icon: const Icon(Icons.backup),
+                                label: const Text('EXPORTAR BACKUP COMPLETO'),
                               ),
-                            ),
-                          ),
-                        ],
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                                onPressed: _restoreBackup,
+                                icon: const Icon(Icons.restore),
+                                label: const Text('IMPORTAR BACKUP COMPLETO'),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+              ),
+
+              // Section 5: Shorebird OTA
+              _buildSectionHeader(Icons.system_update_alt, 'ACTUALIZACIONES OTA (SHOREBIRD)', 'Actualizaciones instantáneas de código sin reinstalar'),
+              Builder(
+                builder: (context) {
+                  final otaState = ref.watch(otaUpdateProvider);
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.bolt, color: Colors.blue, size: 24),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Estado Shorebird CodePush',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      otaState.isShorebirdAvailable
+                                          ? (otaState.currentPatch != null ? 'Parche Instalado: #${otaState.currentPatch}' : 'Versión Oficial Base')
+                                          : 'Motor Shorebird Habilitado en la app',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: otaState.isShorebirdAvailable ? Colors.green.shade100 : Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  otaState.isShorebirdAvailable ? 'OTA ACTIVO' : 'DISPONIBLE',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: otaState.isShorebirdAvailable ? Colors.green.shade900 : Colors.blue.shade900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (otaState.message != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Text(
+                                otaState.message!,
+                                style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              backgroundColor: Colors.blue.shade800,
+                            ),
+                            onPressed: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
+                                ? null
+                                : () => ref.read(otaUpdateProvider.notifier).checkForUpdates(),
+                            icon: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.sync),
+                            label: Text(
+                              otaState.status == OtaStatus.checking
+                                  ? 'BUSCANDO PARCHES...'
+                                  : (otaState.status == OtaStatus.downloading ? 'DESCARGANDO PARCHE...' : 'BUSCAR PARCHES OTA EN LA NUBE'),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

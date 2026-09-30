@@ -330,20 +330,48 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue.shade900),
-              child: const Column(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade900, Colors.blue.shade700],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.directions_bus, color: Colors.white, size: 36),
-                      SizedBox(width: 12),
-                      Text('BITÁCORA GPS', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.directions_bus, color: Colors.white, size: 32),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('BITÁCORA GPS', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                            Text('Relevamiento Colectivos', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  SizedBox(height: 8),
-                  Text('Relevamiento de Campo Colectivos', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('v1.0.4 · Offline-First · Shorebird OTA', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  ),
                 ],
               ),
             ),
@@ -456,88 +484,91 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
             ],
           ),
 
-          // Top Header / Telemetry Bar Overlay
+          // Top Status Header / Telemetry Overlay
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Card(
-                  elevation: 6,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  color: Theme.of(context).cardColor,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Row(
-                      children: [
-                        Builder(
-                          builder: (ctx) => IconButton(
-                            icon: const Icon(Icons.menu, size: 28),
-                            onPressed: () => Scaffold.of(ctx).openDrawer(),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: Theme.of(context).cardColor,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          Builder(
+                            builder: (ctx) => IconButton(
+                              icon: const Icon(Icons.menu, size: 28),
+                              onPressed: () => Scaffold.of(ctx).openDrawer(),
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: state.status == CaptureStatus.idle
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    Text(
-                                      pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
-                                      style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        FadeTransition(
-                                          opacity: _pulseAnimation,
-                                          child: Container(
-                                            width: 10,
-                                            height: 10,
-                                            margin: const EdgeInsets.only(right: 6),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.red,
-                                              shape: BoxShape.circle,
+                          Expanded(
+                            child: state.status == CaptureStatus.idle
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      Text(
+                                        pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
+                                        style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          FadeTransition(
+                                            opacity: _pulseAnimation,
+                                            child: Container(
+                                              width: 10,
+                                              height: 10,
+                                              margin: const EdgeInsets.only(right: 6),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.red,
+                                                shape: BoxShape.circle,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        Text(
-                                          'REC · LÍNEA ${state.line?.number ?? ''}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '${state.branch?.name ?? ''} (${state.direction})',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${GeoUtils.formatDistance(state.totalDistanceMeters)} · ${state.currentSpeedKmh.toStringAsFixed(0)} km/h · ${state.pointCount} pts · ${GeoUtils.formatDuration(Duration(seconds: state.elapsedSeconds))}',
-                                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                        IconButton(
-                          icon: Icon(_autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.blue),
-                          onPressed: () {
-                            setState(() => _autoFollow = !_autoFollow);
-                            if (_autoFollow && pos != null) {
-                              _mapController.move(currentLatLng, _mapController.camera.zoom);
-                            }
-                          },
-                          tooltip: 'Seguir GPS',
-                        ),
-                      ],
+                                          Text(
+                                            'REC · LÍNEA ${state.line?.number ?? ''}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '${state.branch?.name ?? ''} (${state.direction})',
+                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${GeoUtils.formatDistance(state.totalDistanceMeters)} · ${state.currentSpeedKmh.toStringAsFixed(0)} km/h · ${state.pointCount} pts · ${GeoUtils.formatDuration(Duration(seconds: state.elapsedSeconds))}',
+                                        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          IconButton(
+                            icon: Icon(_autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.blue),
+                            onPressed: () {
+                              setState(() => _autoFollow = !_autoFollow);
+                              if (_autoFollow && pos != null) {
+                                _mapController.move(currentLatLng, _mapController.camera.zoom);
+                              }
+                            },
+                            tooltip: 'Seguir GPS',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -551,29 +582,34 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
               top: 90,
               left: 16,
               right: 16,
-              child: Card(
-                color: Colors.amber.shade200,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'POSIBLE PARADA (${state.possibleStopSeconds}s)',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Card(
+                    color: Colors.amber.shade200,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.amber),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'POSIBLE PARADA (${state.possibleStopSeconds}s)',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => ref.read(captureNotifierProvider.notifier).confirmAutoStop(),
+                            child: const Text('CONFIRMAR'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () => ref.read(captureNotifierProvider.notifier).ignoreAutoStop(),
+                          ),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () => ref.read(captureNotifierProvider.notifier).confirmAutoStop(),
-                        child: const Text('CONFIRMAR'),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => ref.read(captureNotifierProvider.notifier).ignoreAutoStop(),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -582,7 +618,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           // Re-center Floating Button
           if (!_autoFollow && pos != null)
             Positioned(
-              bottom: state.status == CaptureStatus.idle ? 220 : 250,
+              bottom: state.status == CaptureStatus.idle ? 250 : 260,
               right: 16,
               child: FloatingActionButton.extended(
                 onPressed: () {
@@ -594,185 +630,241 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
               ),
             ),
 
-          // Bottom Quick Action Panel
+          // Responsive Bottom Quick Action & Setup Panel
           Align(
             alignment: Alignment.bottomCenter,
             child: SafeArea(
-              child: Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12, offset: Offset(0, 4))],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12, offset: Offset(0, 4))],
+                  ),
+                  child: state.status == CaptureStatus.idle
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.directions_bus, color: Colors.blue, size: 22),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'CONFIGURACIÓN DE RECORRIDO',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<LineEntry>(
+                                    value: _selectedLine,
+                                    isDense: true,
+                                    borderRadius: BorderRadius.circular(12),
+                                    decoration: InputDecoration(
+                                      labelText: 'Línea de Colectivo',
+                                      prefixIcon: const Icon(Icons.format_list_numbered),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    items: _lines
+                                        .map((l) => DropdownMenuItem(
+                                              value: l,
+                                              child: Text('Línea ${l.number}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            ))
+                                        .toList(),
+                                    onChanged: _onLineChanged,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: DropdownButtonFormField<BranchEntry>(
+                                    value: _selectedBranch,
+                                    isDense: true,
+                                    borderRadius: BorderRadius.circular(12),
+                                    decoration: InputDecoration(
+                                      labelText: 'Ramal',
+                                      prefixIcon: const Icon(Icons.alt_route),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    items: _branches
+                                        .map((b) => DropdownMenuItem(
+                                              value: b,
+                                              child: Text(b.name, overflow: TextOverflow.ellipsis),
+                                            ))
+                                        .toList(),
+                                    onChanged: (b) => setState(() => _selectedBranch = b),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SegmentedButton<String>(
+                                    segments: const [
+                                      ButtonSegment(value: 'IDA', label: Text('IDA'), icon: Icon(Icons.arrow_forward)),
+                                      ButtonSegment(value: 'VUELTA', label: Text('VUELTA'), icon: Icon(Icons.arrow_back)),
+                                    ],
+                                    selected: {_direction},
+                                    onSelectionChanged: (set) => setState(() => _direction = set.first),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _internalController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Interno (opcional)',
+                                      isDense: true,
+                                      prefixIcon: const Icon(Icons.tag, size: 20),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _domainController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Dominio/Patente',
+                                      isDense: true,
+                                      prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    textCapitalization: TextCapitalization.characters,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size.fromHeight(54),
+                                backgroundColor: Colors.green.shade700,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              onPressed: _startCapture,
+                              icon: const Icon(Icons.play_arrow, size: 28),
+                              label: const Text('INICIAR CAPTURA DE RECORRIDO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Primary PARADA Button
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size.fromHeight(56),
+                                backgroundColor: Colors.red.shade700,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              onPressed: () async {
+                                await ref.read(captureNotifierProvider.notifier).addManualStop();
+                                _loadPointsForMap();
+                              },
+                              icon: const Icon(Icons.location_on, size: 28),
+                              label: const Text('REGISTRAR PARADA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: _showIncidentPicker,
+                                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                                    label: const Text('INCIDENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: _handleTakePhoto,
+                                    icon: const Icon(Icons.camera_alt, size: 18),
+                                    label: const Text('FOTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      backgroundColor: _isRecordingAudio ? Colors.red.shade100 : null,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: _handleToggleAudio,
+                                    icon: Icon(Icons.mic, color: _isRecordingAudio ? Colors.red : null, size: 18),
+                                    label: Text(_isRecordingAudio ? 'PARAR' : 'AUDIO', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      backgroundColor: state.status == CaptureStatus.paused ? Colors.green : Colors.amber.shade800,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: () {
+                                      if (state.status == CaptureStatus.paused) {
+                                        ref.read(captureNotifierProvider.notifier).resumeCapture();
+                                      } else {
+                                        ref.read(captureNotifierProvider.notifier).pauseCapture();
+                                      }
+                                    },
+                                    icon: Icon(state.status == CaptureStatus.paused ? Icons.play_arrow : Icons.pause, color: Colors.white, size: 18),
+                                    label: Text(
+                                      state.status == CaptureStatus.paused ? 'REANUDAR' : 'PAUSAR',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      backgroundColor: Colors.red.shade900,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: _confirmFinish,
+                                    icon: const Icon(Icons.stop, color: Colors.white, size: 18),
+                                    label: const Text('FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                 ),
-                child: state.status == CaptureStatus.idle
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<LineEntry>(
-                                  value: _selectedLine,
-                                  isDense: true,
-                                  decoration: const InputDecoration(labelText: 'Línea', border: OutlineInputBorder()),
-                                  items: _lines.map((l) => DropdownMenuItem(value: l, child: Text(l.number))).toList(),
-                                  onChanged: _onLineChanged,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<BranchEntry>(
-                                  value: _selectedBranch,
-                                  isDense: true,
-                                  decoration: const InputDecoration(labelText: 'Ramal', border: OutlineInputBorder()),
-                                  items: _branches.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
-                                  onChanged: (b) => setState(() => _selectedBranch = b),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SegmentedButton<String>(
-                                  segments: const [
-                                    ButtonSegment(value: 'IDA', label: Text('IDA')),
-                                    ButtonSegment(value: 'VUELTA', label: Text('VUELTA')),
-                                  ],
-                                  selected: {_direction},
-                                  onSelectionChanged: (set) => setState(() => _direction = set.first),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _internalController,
-                                  decoration: const InputDecoration(labelText: 'Interno (opcional)', isDense: true, border: OutlineInputBorder()),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  controller: _domainController,
-                                  decoration: const InputDecoration(labelText: 'Dominio (opcional)', isDense: true, border: OutlineInputBorder()),
-                                  textCapitalization: TextCapitalization.characters,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(56),
-                              backgroundColor: Colors.green.shade700,
-                            ),
-                            onPressed: _startCapture,
-                            icon: const Icon(Icons.play_arrow, size: 32),
-                            label: const Text('INICIAR CAPTURA DE RECORRIDO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Primary PARADA Button
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(56),
-                              backgroundColor: Colors.red.shade700,
-                            ),
-                            onPressed: () async {
-                              await ref.read(captureNotifierProvider.notifier).addManualStop();
-                              _loadPointsForMap();
-                            },
-                            icon: const Icon(Icons.location_on, size: 28),
-                            label: const Text('REGISTRAR PARADA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
-                                  onPressed: _showIncidentPicker,
-                                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                                  label: const Text('INCIDENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
-                                  onPressed: _handleTakePhoto,
-                                  icon: const Icon(Icons.camera_alt, size: 18),
-                                  label: const Text('FOTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    backgroundColor: _isRecordingAudio ? Colors.red.shade100 : null,
-                                  ),
-                                  onPressed: _handleToggleAudio,
-                                  icon: Icon(Icons.mic, color: _isRecordingAudio ? Colors.red : null, size: 18),
-                                  label: Text(_isRecordingAudio ? 'PARAR' : 'AUDIO', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    backgroundColor: state.status == CaptureStatus.paused ? Colors.green : Colors.amber.shade800,
-                                  ),
-                                  onPressed: () {
-                                    if (state.status == CaptureStatus.paused) {
-                                      ref.read(captureNotifierProvider.notifier).resumeCapture();
-                                    } else {
-                                      ref.read(captureNotifierProvider.notifier).pauseCapture();
-                                    }
-                                  },
-                                  icon: Icon(state.status == CaptureStatus.paused ? Icons.play_arrow : Icons.pause, color: Colors.white, size: 18),
-                                  label: Text(
-                                    state.status == CaptureStatus.paused ? 'REANUDAR' : 'PAUSAR',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    backgroundColor: Colors.red.shade900,
-                                  ),
-                                  onPressed: _confirmFinish,
-                                  icon: const Icon(Icons.stop, color: Colors.white, size: 18),
-                                  label: const Text('FINALIZAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
               ),
             ),
           ),
