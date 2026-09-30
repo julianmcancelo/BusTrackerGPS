@@ -5,6 +5,8 @@ import 'router.dart';
 import 'theme.dart';
 import '../core/services/ota_update_service.dart';
 import '../core/services/github_update_service.dart';
+import '../core/services/sync_service.dart';
+import '../database/database_provider.dart';
 
 class BitacoraGpsApp extends ConsumerStatefulWidget {
   const BitacoraGpsApp({super.key});
@@ -20,6 +22,7 @@ class _BitacoraGpsAppState extends ConsumerState<BitacoraGpsApp> {
     Future.microtask(() {
       ref.read(otaUpdateProvider.notifier).checkForUpdates();
       ref.read(githubUpdateProvider.notifier).checkForUpdates();
+      SyncService.fetchOfficialLines(ref.read(databaseProvider));
     });
   }
 

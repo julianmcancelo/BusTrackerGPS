@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/utils/geo_utils.dart';
 import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
 
@@ -25,17 +27,30 @@ class BranchDirectionStatus {
   final bool hasVuelta;
   final TripWithDetails? lastIdaTrip;
   final TripWithDetails? lastVueltaTrip;
+  final ReferenceRouteEntry? referenceIdaRoute;
+  final ReferenceRouteEntry? referenceVueltaRoute;
+  final List<LatLng> idaPoints;
+  final List<LatLng> vueltaPoints;
+  final double idaDistanceMeters;
+  final double vueltaDistanceMeters;
+  final bool isFromRemotePlatform;
 
   bool get isComplete => hasIda && hasVuelta;
   bool get hasAny => hasIda || hasVuelta;
-  double get totalDistanceMeters =>
-      (lastIdaTrip?.trip.distanceMeters ?? 0.0) + (lastVueltaTrip?.trip.distanceMeters ?? 0.0);
+  double get totalDistanceMeters => idaDistanceMeters + vueltaDistanceMeters;
 
   BranchDirectionStatus({
     required this.hasIda,
     required this.hasVuelta,
     this.lastIdaTrip,
     this.lastVueltaTrip,
+    this.referenceIdaRoute,
+    this.referenceVueltaRoute,
+    this.idaPoints = const [],
+    this.vueltaPoints = const [],
+    this.idaDistanceMeters = 0.0,
+    this.vueltaDistanceMeters = 0.0,
+    this.isFromRemotePlatform = false,
   });
 }
 
@@ -269,11 +284,78 @@ class TripsRepository {
       }
     }
 
+    // Query ReferenceRoutes from municipal catalog / server sync
+    final refQuery = db.select(db.referenceRoutes)
+      ..where((r) => r.lineId.equals(lineId) & r.branchId.equals(branchId));
+    final refRoutes = await refQuery.get();
+
+    ReferenceRouteEntry? refIda;
+    ReferenceRouteEntry? refVuelta;
+
+    for (final rf in refRoutes) {
+      if (rf.direction.toUpperCase() == 'IDA' && refIda == null) {
+        refIda = rf;
+      } else if (rf.direction.toUpperCase() == 'VUELTA' && refVuelta == null) {
+        refVuelta = rf;
+      }
+    }
+
+    // Resolve IDA coordinates and distance
+    List<LatLng> idaCoords = [];
+    double idaDist = 0.0;
+    final bool hasIda = lastIda != null || refIda != null;
+
+    if (lastIda != null) {
+      final tripId = lastIda.trip.id;
+      final rawPts = await (db.select(db.trackPoints)
+            ..where((t) => t.tripId.equals(tripId))
+            ..orderBy([(t) => OrderingTerm.asc(t.timestamp)]))
+          .get();
+      idaCoords = rawPts
+          .where((p) => p.quality != 'OUTLIER')
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+      idaDist = lastIda.trip.distanceMeters;
+    } else if (refIda != null) {
+      idaCoords = GeoUtils.parseGeoJsonCoordinates(refIda.geoJsonData);
+      idaDist = GeoUtils.calculatePolylineDistanceMeters(idaCoords);
+    }
+
+    // Resolve VUELTA coordinates and distance
+    List<LatLng> vueltaCoords = [];
+    double vueltaDist = 0.0;
+    final bool hasVuelta = lastVuelta != null || refVuelta != null;
+
+    if (lastVuelta != null) {
+      final tripId = lastVuelta.trip.id;
+      final rawPts = await (db.select(db.trackPoints)
+            ..where((t) => t.tripId.equals(tripId))
+            ..orderBy([(t) => OrderingTerm.asc(t.timestamp)]))
+          .get();
+      vueltaCoords = rawPts
+          .where((p) => p.quality != 'OUTLIER')
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+      vueltaDist = lastVuelta.trip.distanceMeters;
+    } else if (refVuelta != null) {
+      vueltaCoords = GeoUtils.parseGeoJsonCoordinates(refVuelta.geoJsonData);
+      vueltaDist = GeoUtils.calculatePolylineDistanceMeters(vueltaCoords);
+    }
+
+    final isRemote = (refIda != null && lastIda == null) || (refVuelta != null && lastVuelta == null);
+
     return BranchDirectionStatus(
-      hasIda: lastIda != null,
-      hasVuelta: lastVuelta != null,
+      hasIda: hasIda,
+      hasVuelta: hasVuelta,
       lastIdaTrip: lastIda,
       lastVueltaTrip: lastVuelta,
+      referenceIdaRoute: refIda,
+      referenceVueltaRoute: refVuelta,
+      idaPoints: idaCoords,
+      vueltaPoints: vueltaCoords,
+      idaDistanceMeters: idaDist,
+      vueltaDistanceMeters: vueltaDist,
+      isFromRemotePlatform: isRemote,
     );
   }
 }

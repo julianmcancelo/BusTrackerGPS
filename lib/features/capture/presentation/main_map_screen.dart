@@ -126,28 +126,11 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     if (_selectedLine == null || _selectedBranch == null) return;
 
     final tripsRepo = ref.read(tripsRepositoryProvider);
-    final gpsRepo = ref.read(gpsRepositoryProvider);
 
     final status = await tripsRepo.getBranchDirectionStatus(_selectedLine!.id, _selectedBranch!.id);
 
-    List<LatLng> idaPts = [];
-    List<LatLng> vueltaPts = [];
-
-    if (status.lastIdaTrip != null) {
-      final rawPts = await gpsRepo.getTrackPoints(status.lastIdaTrip!.trip.id);
-      idaPts = rawPts
-          .where((p) => p.quality != 'OUTLIER')
-          .map((p) => LatLng(p.latitude, p.longitude))
-          .toList();
-    }
-
-    if (status.lastVueltaTrip != null) {
-      final rawPts = await gpsRepo.getTrackPoints(status.lastVueltaTrip!.trip.id);
-      vueltaPts = rawPts
-          .where((p) => p.quality != 'OUTLIER')
-          .map((p) => LatLng(p.latitude, p.longitude))
-          .toList();
-    }
+    final idaPts = status.idaPoints;
+    final vueltaPts = status.vueltaPoints;
 
     if (mounted) {
       setState(() {
@@ -1068,7 +1051,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                         const SizedBox(width: 4),
                                         Text(
                                           _directionStatus!.hasIda
-                                              ? 'IDA: ${GeoUtils.formatDistance(_directionStatus!.lastIdaTrip!.trip.distanceMeters)}'
+                                              ? 'IDA: ${GeoUtils.formatDistance(_directionStatus!.idaDistanceMeters)}'
                                               : 'IDA: Pendiente',
                                           style: TextStyle(
                                             fontSize: 11,
@@ -1085,7 +1068,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                         const SizedBox(width: 4),
                                         Text(
                                           _directionStatus!.hasVuelta
-                                              ? 'VUELTA: ${GeoUtils.formatDistance(_directionStatus!.lastVueltaTrip!.trip.distanceMeters)}'
+                                              ? 'VUELTA: ${GeoUtils.formatDistance(_directionStatus!.vueltaDistanceMeters)}'
                                               : 'VUELTA: Pendiente',
                                           style: TextStyle(
                                             fontSize: 11,

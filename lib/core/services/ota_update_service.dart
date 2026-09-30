@@ -68,7 +68,7 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
     if (!state.isShorebirdAvailable) {
       state = state.copyWith(
         status: OtaStatus.unavailable,
-        message: 'Shorebird no está habilitado en este entorno/compilación',
+        message: 'Shorebird OTA activo para producción móvil (ARM64). Para emulador/PC se utiliza el actualizador de GitHub.',
       );
       return;
     }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 
@@ -128,6 +129,79 @@ class GeoUtils {
       return '$hh:$mm:$ss';
     }
     return '$mm:$ss';
+  }
+
+  static List<LatLng> parseGeoJsonCoordinates(dynamic data) {
+    if (data == null) return [];
+    try {
+      dynamic jsonObj = data;
+      if (data is String) {
+        if (data.trim().isEmpty) return [];
+        jsonObj = jsonDecode(data);
+      }
+
+      final points = <LatLng>[];
+
+      void extractFromGeometry(Map<String, dynamic> geom) {
+        final type = geom['type']?.toString().toUpperCase();
+        final coords = geom['coordinates'];
+        if (coords is List) {
+          if (type == 'LINESTRING') {
+            for (final c in coords) {
+              if (c is List && c.length >= 2) {
+                final lon = (c[0] as num).toDouble();
+                final lat = (c[1] as num).toDouble();
+                points.add(LatLng(lat, lon));
+              }
+            }
+          } else if (type == 'MULTILINESTRING') {
+            for (final line in coords) {
+              if (line is List) {
+                for (final c in line) {
+                  if (c is List && c.length >= 2) {
+                    final lon = (c[0] as num).toDouble();
+                    final lat = (c[1] as num).toDouble();
+                    points.add(LatLng(lat, lon));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (jsonObj is Map<String, dynamic>) {
+        if (jsonObj['type'] == 'FeatureCollection' && jsonObj['features'] is List) {
+          for (final f in jsonObj['features']) {
+            if (f is Map<String, dynamic> && f['geometry'] is Map<String, dynamic>) {
+              extractFromGeometry(f['geometry'] as Map<String, dynamic>);
+            }
+          }
+        } else if (jsonObj['type'] == 'Feature' && jsonObj['geometry'] is Map<String, dynamic>) {
+          extractFromGeometry(jsonObj['geometry'] as Map<String, dynamic>);
+        } else if (jsonObj.containsKey('coordinates')) {
+          extractFromGeometry(jsonObj);
+        }
+      }
+
+      return points;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static double calculatePolylineDistanceMeters(List<LatLng> points) {
+    if (points.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 0; i < points.length - 1; i++) {
+      total += distanceMeters(
+        points[i].latitude,
+        points[i].longitude,
+        points[i + 1].latitude,
+        points[i + 1].longitude,
+      );
+    }
+    return total;
   }
 
   static String formatSpeed(double speedKmh) {

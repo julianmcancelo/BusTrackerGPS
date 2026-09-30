@@ -233,8 +233,9 @@ class SyncService {
                 ..where((b) => b.lineId.equals(lineId) & b.name.equals(ramal)))
               .getSingleOrNull();
 
+          int branchId;
           if (existingBranch == null) {
-            await db.into(db.branches).insert(
+            branchId = await db.into(db.branches).insert(
                   BranchesCompanion.insert(
                     lineId: lineId,
                     name: ramal,
@@ -242,6 +243,42 @@ class SyncService {
                   ),
                 );
             updatedCount++;
+          } else {
+            branchId = existingBranch.id;
+          }
+
+          final datosGeo = item['datosGeo'];
+          if (datosGeo != null) {
+            final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
+            if (rawGeoString.trim().isNotEmpty && rawGeoString != '{}') {
+              final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
+              final existingRef = await (db.select(db.referenceRoutes)
+                    ..where((r) =>
+                        r.lineId.equals(lineId) &
+                        r.branchId.equals(branchId) &
+                        r.direction.equals(sentido)))
+                  .getSingleOrNull();
+
+              if (existingRef == null) {
+                await db.into(db.referenceRoutes).insert(
+                      ReferenceRoutesCompanion.insert(
+                        lineId: lineId,
+                        branchId: branchId,
+                        direction: sentido,
+                        name: 'Línea $numero - $ramal ($sentido)',
+                        format: 'GEOJSON',
+                        geoJsonData: rawGeoString,
+                      ),
+                    );
+              } else {
+                await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
+                  ReferenceRoutesCompanion(
+                    geoJsonData: Value(rawGeoString),
+                    name: Value('Línea $numero - $ramal ($sentido)'),
+                  ),
+                );
+              }
+            }
           }
         }
       }
