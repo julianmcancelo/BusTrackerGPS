@@ -21,6 +21,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _maxAccuracy = 50.0;
   bool _autoStopEnabled = true;
   int _autoStopMinSeconds = 20;
+  bool _snapToRoadsEnabled = true;
   bool _hapticsEnabled = true;
   String _defaultExportFormat = 'GeoJSON';
 
@@ -39,6 +40,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final maxAcc = await repo.getGpsMaxAccuracy();
     final autoStop = await repo.getAutoStopEnabled();
     final autoStopSec = await repo.getAutoStopMinSeconds();
+    final snapRoads = await repo.getSnapToRoadsEnabled();
     final haptics = await repo.getHapticsEnabled();
     final fmt = await repo.getDefaultExportFormat();
 
@@ -48,6 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _maxAccuracy = maxAcc;
       _autoStopEnabled = autoStop;
       _autoStopMinSeconds = autoStopSec;
+      _snapToRoadsEnabled = snapRoads;
       _hapticsEnabled = haptics;
       _defaultExportFormat = fmt;
       _isLoading = false;
@@ -210,6 +213,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           },
                         ),
                       ),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.alt_route, color: Colors.blue),
+                      title: const Text('Alineación a Calles en Vivo (Snap-to-Roads)'),
+                      subtitle: const Text('Filtro Kalman 2D y alineación al eje vial'),
+                      value: _snapToRoadsEnabled,
+                      onChanged: (val) {
+                        setState(() => _snapToRoadsEnabled = val);
+                        _saveSetting('snap_to_roads_enabled', val.toString());
+                      },
                     ),
                   ],
                 ),

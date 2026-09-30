@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
-const String currentAppVersionTag = 'v1.0.6';
 const String githubReleasesApiUrl = 'https://api.github.com/repos/julianmcancelo/BusTrackerGPS/releases/latest';
 
 enum GithubUpdateStatus {
@@ -31,7 +31,7 @@ class GithubUpdateState {
 
   const GithubUpdateState({
     this.status = GithubUpdateStatus.idle,
-    this.currentVersion = currentAppVersionTag,
+    this.currentVersion = 'v1.0.8',
     this.latestVersion,
     this.releaseNotes,
     this.downloadUrl,
@@ -68,7 +68,16 @@ final githubUpdateProvider = NotifierProvider<GithubUpdateNotifier, GithubUpdate
 class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
   @override
   GithubUpdateState build() {
+    _initCurrentVersion();
     return const GithubUpdateState();
+  }
+
+  Future<void> _initCurrentVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final version = 'v${info.version}';
+      state = state.copyWith(currentVersion: version);
+    } catch (_) {}
   }
 
   bool _isNewerVersion(String latest, String current) {
@@ -90,6 +99,7 @@ class GithubUpdateNotifier extends Notifier<GithubUpdateState> {
   }
 
   Future<void> checkForUpdates({bool autoDownload = false}) async {
+    await _initCurrentVersion();
     state = state.copyWith(status: GithubUpdateStatus.checking, errorMessage: null);
 
     try {

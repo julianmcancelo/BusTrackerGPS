@@ -10,6 +10,8 @@ import '../data/foreground_task_handler.dart';
 import '../../trips/data/trips_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/utils/geo_utils.dart';
+import '../../../core/utils/kalman_filter.dart';
+import '../../../core/services/road_snap_service.dart';
 import '../../../core/utils/haptics_utils.dart';
 import '../../../core/permissions/permissions_handler.dart';
 
@@ -20,6 +22,8 @@ class CaptureNotifier extends Notifier<CaptureState> {
   StreamSubscription<Position>? _idleLocationSub;
   Timer? _timer;
   DateTime? _stoppedSince;
+  final GpsKalmanFilter _kalmanFilter = GpsKalmanFilter();
+  bool _snapToRoadsEnabled = true;
 
   TripsRepository get tripsRepo => ref.read(tripsRepositoryProvider);
   GpsRepository get gpsRepo => ref.read(gpsRepositoryProvider);
@@ -212,6 +216,8 @@ class CaptureNotifier extends Notifier<CaptureState> {
     await _idleLocationSub?.cancel();
     _timer?.cancel();
 
+    _kalmanFilter.reset();
+    _snapToRoadsEnabled = await settingsRepo.getSnapToRoadsEnabled();
     final maxAccuracy = await settingsRepo.getGpsMaxAccuracy();
     final autoStopEnabled = await settingsRepo.getAutoStopEnabled();
     final autoStopMinSec = await settingsRepo.getAutoStopMinSeconds();
@@ -282,12 +288,36 @@ class CaptureNotifier extends Notifier<CaptureState> {
   ) async {
     if (state.tripId == null || state.status != CaptureStatus.active) return;
 
+    // Apply 2D Kalman smoothing to raw GPS coordinate
+    Position processedPos = pos;
+    if (_snapToRoadsEnabled) {
+      final smoothed = _kalmanFilter.process(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        accuracyMeters: pos.accuracy,
+        timestampMs: pos.timestamp.millisecondsSinceEpoch,
+      );
+
+      processedPos = Position(
+        latitude: smoothed.latitude,
+        longitude: smoothed.longitude,
+        timestamp: pos.timestamp,
+        accuracy: pos.accuracy,
+        altitude: pos.altitude,
+        altitudeAccuracy: pos.altitudeAccuracy,
+        heading: pos.heading,
+        headingAccuracy: pos.headingAccuracy,
+        speed: pos.speed,
+        speedAccuracy: pos.speedAccuracy,
+      );
+    }
+
     final lastAccepted = state.lastAcceptedPosition;
-    final DateTime now = pos.timestamp;
+    final DateTime now = processedPos.timestamp;
 
     final pointEntry = await gpsRepo.insertTrackPoint(
       tripId: state.tripId!,
-      position: pos,
+      position: processedPos,
       maxAccuracyThreshold: maxAccuracy,
       lastPosition: lastAccepted,
       lastPositionTime: lastAccepted?.timestamp,
@@ -310,19 +340,19 @@ class CaptureNotifier extends Notifier<CaptureState> {
         final stepDist = GeoUtils.distanceMeters(
           lastAccepted.latitude,
           lastAccepted.longitude,
-          pos.latitude,
-          pos.longitude,
+          processedPos.latitude,
+          processedPos.longitude,
         );
         newDist += stepDist;
       }
-      updatedLastAccepted = pos;
+      updatedLastAccepted = processedPos;
       if (currentSpeed > maxSpeed) {
         maxSpeed = currentSpeed;
       }
     }
 
     state = state.copyWith(
-      currentPosition: pos,
+      currentPosition: processedPos,
       lastAcceptedPosition: updatedLastAccepted,
       pointCount: state.pointCount + 1,
       totalDistanceMeters: newDist,

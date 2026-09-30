@@ -523,7 +523,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                           Icon(Icons.system_update_alt, color: Colors.white70, size: 13),
                           SizedBox(width: 6),
                           Text(
-                            'v1.0.7 · Actualización OTA & Releases',
+                            'v1.0.8 · Snap to Roads & OTA',
                             style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
                           ),
                         ],

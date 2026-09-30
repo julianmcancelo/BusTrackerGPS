@@ -65,8 +65,14 @@ class SettingsRepository {
     return v ?? 'GeoJSON';
   }
 
+  Future<bool> getSnapToRoadsEnabled() async {
+    final v = await getSetting('snap_to_roads_enabled');
+    return v == null ? true : v == 'true';
+  }
+
   Future<double> getDeviationThresholdMeters() async {
     final v = await getSetting('deviation_threshold_meters');
     return double.tryParse(v ?? '') ?? 100.0;
   }
 }
+

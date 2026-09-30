@@ -194,7 +194,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     ),
                     onPressed: _reverseTrip,
                     icon: const Icon(Icons.swap_calls, color: Colors.white),
-                    label: const Text('🔁 HACER VUELTA (SENTIDO CONTRARIO)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    label: const Text('HACER VUELTA (SENTIDO CONTRARIO)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),

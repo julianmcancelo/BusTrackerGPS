@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 
 import 'package:bitacora_gps/database/database.dart';
 import 'package:bitacora_gps/core/utils/geo_utils.dart';
+import 'package:bitacora_gps/core/utils/kalman_filter.dart';
 import 'package:bitacora_gps/features/export/data/export_service.dart';
 import 'package:bitacora_gps/features/trips/data/trips_repository.dart';
 import 'package:bitacora_gps/features/capture/data/gps_repository.dart';
@@ -55,6 +56,18 @@ void main() {
       expect(GeoUtils.formatDistance(450), '450 m');
       expect(GeoUtils.formatDistance(12420), '12.42 km');
       expect(GeoUtils.formatDuration(const Duration(minutes: 42, seconds: 17)), '42:17');
+    });
+
+    test('Kalman Filter reduces GPS jitter while tracking motion', () {
+      final kalman = GpsKalmanFilter();
+      final p1 = kalman.process(lat: -34.7000, lng: -58.3800, accuracyMeters: 20.0, timestampMs: 1000);
+      expect(p1.latitude, -34.7000);
+
+      // Add noisy observation with high inaccuracy (50m)
+      final p2 = kalman.process(lat: -34.7008, lng: -58.3800, accuracyMeters: 50.0, timestampMs: 2000);
+      // Smoothed latitude should not blindly jump all the way to -34.7008
+      expect(p2.latitude, greaterThan(-34.7008));
+      expect(p2.latitude, lessThan(-34.7000));
     });
   });
 
