@@ -9,7 +9,6 @@ import 'widgets/transit_line_chips.dart';
 import 'widgets/transit_bottom_panel.dart';
 import 'line_itinerary_screen.dart';
 import '../data/models/transit_models.dart';
-import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class TransitMapScreen extends ConsumerStatefulWidget {
   const TransitMapScreen({super.key});
@@ -495,6 +494,26 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
                               notifier.setSearchQuery('');
                             }
                           });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cloud_sync_outlined, color: Colors.blueGrey),
+                        tooltip: 'Sincronizar con Lanús Digital',
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Sincronizando red y trazas con Lanús Digital...'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          final count = await notifier.syncWithLanusDigital();
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('¡Red de transporte actualizada! ($count líneas sincronizadas)'),
+                              backgroundColor: Colors.teal.shade800,
+                            ),
+                          );
                         },
                       ),
                       IconButton(

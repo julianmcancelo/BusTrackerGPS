@@ -266,9 +266,42 @@ class SyncService {
             }
           }
 
-          // NOTA: A pedido del usuario, NO guardamos las trazas (datosGeo) oficiales de Lanús Digital,
-          // ya que ensucian el mapa. Solo mantenemos las Líneas y Ramales en la base de datos.
-          // Las trazas que sí se guardan provienen de fetchBitacoraGpsSurveys() (otros usuarios).
+          // Guardar traza oficial de Lanús Digital (datosGeo) en ReferenceRoutes
+          final datosGeo = item['datosGeo'] ?? item['datos_geo'] ?? item['geoData'] ?? item['geojson'] ?? item['geo_json'];
+          if (datosGeo != null) {
+            final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
+            if (rawGeoString.trim().isNotEmpty && rawGeoString != '{}') {
+              final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
+              final routeName = 'Línea $numero - $ramal ($sentido)';
+
+              final existingRef = (await (db.select(db.referenceRoutes)
+                    ..where((r) =>
+                        r.lineId.equals(lineId) &
+                        r.branchId.equals(branchId) &
+                        r.direction.equals(sentido)))
+                  .get()).firstOrNull;
+
+              if (existingRef == null) {
+                await db.into(db.referenceRoutes).insert(
+                      ReferenceRoutesCompanion.insert(
+                        lineId: lineId,
+                        branchId: branchId,
+                        direction: sentido,
+                        name: routeName,
+                        format: 'GEOJSON',
+                        geoJsonData: rawGeoString,
+                      ),
+                    );
+              } else {
+                await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
+                  ReferenceRoutesCompanion(
+                    geoJsonData: Value(rawGeoString),
+                    name: Value(routeName),
+                  ),
+                );
+              }
+            }
+          }
         }
       }
     } catch (_) {}

@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../data/models/transit_models.dart';
 import '../data/transit_repository.dart';
+import '../../../core/services/sync_service.dart';
 
 class TransitState {
   final List<TransitLineSummary> allLines;
@@ -116,9 +117,16 @@ class TransitNotifier extends Notifier<TransitState> {
 
   Future<void> _init() async {
     state = state.copyWith(isLoading: true);
-    final network = await repo.getTransitNetwork();
+    var network = await repo.getTransitNetwork();
 
-    // Por defecto, habilitar todas las líneas en el mapa para vista global
+    // Si aún no hay trazas guardadas, sincroniza automáticamente con Lanús Digital
+    if (network.isEmpty || network.every((l) => !l.hasRoutes)) {
+      try {
+        await SyncService.fetchOfficialLines(repo.db);
+        network = await repo.getTransitNetwork();
+      } catch (_) {}
+    }
+
     final allIds = network.map((l) => l.id).toSet();
     final firstLineWithRoutes =
         network.where((l) => l.hasRoutes).firstOrNull ?? network.firstOrNull;
@@ -133,6 +141,16 @@ class TransitNotifier extends Notifier<TransitState> {
 
     await _refreshStops();
     _startLocationUpdates();
+  }
+
+  Future<int> syncWithLanusDigital() async {
+    state = state.copyWith(isLoading: true);
+    int count = 0;
+    try {
+      count = await SyncService.fetchOfficialLines(repo.db);
+    } catch (_) {}
+    await refreshNetwork();
+    return count;
   }
 
   void _startLocationUpdates() async {
