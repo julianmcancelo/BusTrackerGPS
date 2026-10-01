@@ -16,12 +16,18 @@ class OtaState {
   final int? currentPatch;
   final String? message;
   final bool isShorebirdAvailable;
+  final DateTime? lastCheckedAt;
+  final String releaseVersion;
+  final String track;
 
   const OtaState({
     this.status = OtaStatus.idle,
     this.currentPatch,
     this.message,
     this.isShorebirdAvailable = false,
+    this.lastCheckedAt,
+    this.releaseVersion = '1.0.19+19',
+    this.track = 'stable',
   });
 
   OtaState copyWith({
@@ -29,12 +35,18 @@ class OtaState {
     int? currentPatch,
     String? message,
     bool? isShorebirdAvailable,
+    DateTime? lastCheckedAt,
+    String? releaseVersion,
+    String? track,
   }) {
     return OtaState(
       status: status ?? this.status,
       currentPatch: currentPatch ?? this.currentPatch,
       message: message ?? this.message,
       isShorebirdAvailable: isShorebirdAvailable ?? this.isShorebirdAvailable,
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+      releaseVersion: releaseVersion ?? this.releaseVersion,
+      track: track ?? this.track,
     );
   }
 }
@@ -73,7 +85,11 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
       return;
     }
 
-    state = state.copyWith(status: OtaStatus.checking, message: 'Consultando servidores de Shorebird...');
+    state = state.copyWith(
+      status: OtaStatus.checking,
+      message: 'Consultando servidores de Shorebird...',
+      lastCheckedAt: DateTime.now(),
+    );
 
     try {
       final updateTrack = await _shorebird.checkForUpdate();
@@ -85,6 +101,7 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
           state = state.copyWith(
             status: OtaStatus.updateAvailable,
             message: 'Nuevo parche OTA detectado en la nube. Listo para instalar.',
+            lastCheckedAt: DateTime.now(),
           );
         }
       } else {
@@ -93,14 +110,16 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
           status: OtaStatus.idle,
           currentPatch: patch?.number,
           message: patch != null
-              ? 'Aplicación al día con el Parche #${patch.number} activo.'
-              : 'Aplicación al día con la versión oficial base 1.0.19+19. El motor OTA está conectado y esperando nuevos parches.',
+              ? 'Aplicación al día con el Parche #${patch.number} activo y operativo.'
+              : 'Aplicación conectada a la versión oficial base 1.0.19+19. El motor OTA está en línea y esperando nuevos parches.',
+          lastCheckedAt: DateTime.now(),
         );
       }
     } catch (e) {
       state = state.copyWith(
         status: OtaStatus.error,
         message: 'No se pudo conectar con el servidor de parches: $e',
+        lastCheckedAt: DateTime.now(),
       );
     }
   }
@@ -108,7 +127,11 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
   Future<void> downloadUpdate() async {
     if (!state.isShorebirdAvailable) return;
 
-    state = state.copyWith(status: OtaStatus.downloading, message: 'Descargando parche OTA en segundo plano...');
+    state = state.copyWith(
+      status: OtaStatus.downloading,
+      message: 'Descargando parche OTA en segundo plano...',
+      lastCheckedAt: DateTime.now(),
+    );
 
     try {
       await _shorebird.update();
@@ -116,12 +139,14 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
       state = state.copyWith(
         status: OtaStatus.readyToRestart,
         currentPatch: patch?.number,
-        message: 'Actualización descargada. Reinicie la aplicación para aplicar el parche.',
+        message: '¡Parche #${patch?.number ?? 1} descargado e instalado con éxito! Reinicie la aplicación para activarlo.',
+        lastCheckedAt: DateTime.now(),
       );
     } catch (e) {
       state = state.copyWith(
         status: OtaStatus.error,
-        message: 'Error al descargar actualización: $e',
+        message: 'Error al descargar el parche: $e',
+        lastCheckedAt: DateTime.now(),
       );
     }
   }
