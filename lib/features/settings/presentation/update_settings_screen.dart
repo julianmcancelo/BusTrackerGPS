@@ -62,10 +62,10 @@ class UpdateSettingsScreen extends ConsumerWidget {
                               : const Color(0xFF059669);
 
                   final badgeText = !isAvail
-                      ? 'MODO DEV / EMULADOR'
+                      ? 'CANAL GITHUB'
                       : hasPatch
                           ? 'PARCHE #${otaState.currentPatch} ACTIVO'
-                          : 'VERSIÓN OFICIAL ${otaState.releaseVersion}';
+                          : 'OFICIAL ${otaState.releaseVersion}';
 
                   return Card(
                     elevation: 2,
@@ -102,7 +102,7 @@ class UpdateSettingsScreen extends ConsumerWidget {
                                     Text(
                                       isAvail
                                           ? 'Motor en línea · Canal ${otaState.track}'
-                                          : 'Inactivo en emulador (activo en APK móvil)',
+                                          : 'Actualización automática vía GitHub Releases',
                                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                                     ),
                                   ],
