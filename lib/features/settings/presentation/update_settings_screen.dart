@@ -65,7 +65,7 @@ class UpdateSettingsScreen extends ConsumerWidget {
                       ? 'MODO DEV / EMULADOR'
                       : hasPatch
                           ? 'PARCHE #${otaState.currentPatch} ACTIVO'
-                          : 'VERSIÓN OFICIAL 1.0.19+19';
+                          : 'VERSIÓN OFICIAL ${otaState.releaseVersion}';
 
                   return Card(
                     elevation: 2,

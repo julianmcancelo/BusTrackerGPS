@@ -26,7 +26,7 @@ class OtaState {
     this.message,
     this.isShorebirdAvailable = false,
     this.lastCheckedAt,
-    this.releaseVersion = '1.0.19+19',
+    this.releaseVersion = '1.0.20+20',
     this.track = 'stable',
   });
 
@@ -111,7 +111,7 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
           currentPatch: patch?.number,
           message: patch != null
               ? 'Aplicación al día con el Parche #${patch.number} activo y operativo.'
-              : 'Aplicación conectada a la versión oficial base 1.0.19+19. El motor OTA está en línea y esperando nuevos parches.',
+              : 'Aplicación conectada a la versión oficial base ${state.releaseVersion}. El motor OTA está en línea y esperando nuevos parches.',
           lastCheckedAt: DateTime.now(),
         );
       }
