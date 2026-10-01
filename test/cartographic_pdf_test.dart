@@ -148,6 +148,46 @@ void main() {
       expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
     });
 
+    test('generates valid PDF bytes with Hoja de Ruta banner and directional chevrons', () async {
+      final routeWithStreets = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal B',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [
+          LatLng(-34.7000, -58.3900),
+          LatLng(-34.7050, -58.3950),
+          LatLng(-34.7100, -58.4000),
+          LatLng(-34.7150, -58.4050),
+          LatLng(-34.7200, -58.4100),
+        ],
+        vueltaPoints: const [
+          LatLng(-34.7200, -58.4100),
+          LatLng(-34.7150, -58.4050),
+          LatLng(-34.7100, -58.4000),
+          LatLng(-34.7050, -58.3950),
+          LatLng(-34.7000, -58.3900),
+        ],
+        idaStreets: const ['Av. Hipólito Yrigoyen', 'Av. 25 de Mayo', 'Av. San Martín', 'Eva Perón'],
+        vueltaStreets: const ['Eva Perón', 'Cnel. D\'Elía', 'Presidente Perón', 'Av. Hipólito Yrigoyen'],
+        distanceKm: 16.8,
+        idaDistanceKm: 8.4,
+        vueltaDistanceKm: 8.4,
+        date: DateTime(2026, 10, 1, 17, 30),
+      );
+
+      final bytes = await CartographicPdfService.generateSheetBytes(
+        data: routeWithStreets,
+        format: CartographicSheetFormat.a3,
+        isLandscape: true,
+        includeBasemap: false,
+      );
+
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+      expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
+    });
+
     test('PdfGraphics dash pattern check', () {
       final doc = PdfDocument();
       final page = PdfPage(doc, pageFormat: const PdfPageFormat(200, 200));

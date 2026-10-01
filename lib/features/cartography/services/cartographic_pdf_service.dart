@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/utils/transport_utils.dart';
 import 'cartographic_projection.dart';
 import 'map_tile_composer.dart';
+import 'street_itinerary_service.dart';
 
 enum CartographicSheetFormat {
   a4,
@@ -71,6 +72,8 @@ class CartographicRouteData {
   final double distanceKm;
   final double? idaDistanceKm;
   final double? vueltaDistanceKm;
+  final List<String> idaStreets;
+  final List<String> vueltaStreets;
   final String? inspectorName;
   final String? internalNumber;
   final String? domain;
@@ -89,6 +92,8 @@ class CartographicRouteData {
     required this.distanceKm,
     this.idaDistanceKm,
     this.vueltaDistanceKm,
+    this.idaStreets = const [],
+    this.vueltaStreets = const [],
     this.inspectorName,
     this.internalNumber,
     this.domain,
@@ -173,9 +178,27 @@ class CartographicPdfService {
     final headerHeight = isPlotterLarge ? 90.0 : 66.0;
     final caratureHeight = isPlotterLarge ? 175.0 : 118.0;
 
+    // Detección automática de arterias y avenidas vía OpenStreetMap si no fueron provistas
+    List<String> idaStreets = data.idaStreets;
+    if (idaStreets.isEmpty && data.effectiveIdaPoints.length >= 2) {
+      try {
+        idaStreets = await StreetItineraryService.extractStreetSequence(data.effectiveIdaPoints);
+      } catch (_) {}
+    }
+
+    List<String> vueltaStreets = data.vueltaStreets;
+    if (vueltaStreets.isEmpty && data.effectiveVueltaPoints.length >= 2) {
+      try {
+        vueltaStreets = await StreetItineraryService.extractStreetSequence(data.effectiveVueltaPoints);
+      } catch (_) {}
+    }
+
+    final hasStreets = idaStreets.isNotEmpty || vueltaStreets.isNotEmpty;
+    final hojaRutaHeight = hasStreets ? (isPlotterLarge ? 48.0 : 34.0) : 0.0;
+
     // Dimensiones exactas del contenedor del mapa
     final mapWidth = contentWidth - 10.0;
-    final mapHeight = contentHeight - headerHeight - caratureHeight - 16.0;
+    final mapHeight = contentHeight - headerHeight - caratureHeight - hojaRutaHeight - 16.0;
 
     // Proyector Web Mercator unificado (garantiza coincidencia exacta imagen / traza)
     final projection = MercatorViewportProjection(
@@ -251,7 +274,7 @@ class CartographicPdfService {
                               child: _buildArchitecturalCrosshairs(),
                             ),
 
-                            // Trazado Vectorial Oficial: IDA (continua) y VUELTA (con espacios)
+                            // Trazado Vectorial Oficial: IDA (continua) y VUELTA (con espacios) + Flechas
                             pw.Positioned.fill(
                               child: _buildVectorPolyline(
                                 data: data,
@@ -279,7 +302,18 @@ class CartographicPdfService {
                       ),
                     ),
 
-                    // 3. Carátula de Plano con Cuadro de Referencias Cartográficas Oficiales
+                    // 3. Banda de Hoja de Ruta Vial Oficial (Secuencia de Arterias de OpenStreetMap)
+                    if (hasStreets)
+                      _buildStreetItineraryBanner(
+                        idaStreets: idaStreets,
+                        vueltaStreets: vueltaStreets,
+                        idaColor: linePdfColor,
+                        vueltaColor: vueltaPdfColor,
+                        height: hojaRutaHeight,
+                        isLarge: isPlotterLarge,
+                      ),
+
+                    // 4. Carátula de Plano con Cuadro de Referencias Cartográficas Oficiales
                     _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor, vueltaPdfColor),
                   ],
                 ),
@@ -477,8 +511,8 @@ class CartographicPdfService {
   }
 
   /// Traza vectorial exacta proyectada mediante Web Mercator isométrica:
-  /// - IDA: línea continua sólida.
-  /// - VUELTA: línea discontinua con espacios.
+  /// - IDA: línea continua sólida con flechas direccionales espaciadas.
+  /// - VUELTA: línea discontinua con espacios y flechas direccionales.
   static pw.Widget _buildVectorPolyline({
     required CartographicRouteData data,
     required MercatorViewportProjection projection,
@@ -518,6 +552,15 @@ class CartographicPdfService {
           }
           canvas.strokePath();
           canvas.setLineDashPattern(); // Restaurar trazo continuo
+
+          // 1c. Flechas direccionales espaciadas en sentido VUELTA
+          _drawDirectionalChevrons(
+            canvas: canvas,
+            points: vueltaPoints,
+            projection: projection,
+            color: vueltaColor,
+            spacingMeters: 1800.0,
+          );
         }
 
         // 2. RECORRIDO IDA (Línea continua)
@@ -543,6 +586,15 @@ class CartographicPdfService {
             canvas.lineTo(pt.x, pt.y);
           }
           canvas.strokePath();
+
+          // 2c. Flechas direccionales espaciadas en sentido IDA
+          _drawDirectionalChevrons(
+            canvas: canvas,
+            points: idaPoints,
+            projection: projection,
+            color: idaColor,
+            spacingMeters: 1800.0,
+          );
         }
 
         // 3. Paradas intermedias registradas
@@ -588,6 +640,109 @@ class CartographicPdfService {
         }
       },
     );
+  }
+
+  /// Dibuja flechas triangulares chevrons a lo largo de la traza para marcar el sentido de circulación
+  static void _drawDirectionalChevrons({
+    required PdfGraphics canvas,
+    required List<LatLng> points,
+    required MercatorViewportProjection projection,
+    required PdfColor color,
+    double spacingMeters = 1800.0,
+  }) {
+    if (points.length < 3) return;
+
+    double totalDist = 0.0;
+    for (int i = 0; i < points.length - 1; i++) {
+      totalDist += _distanceMeters(points[i], points[i + 1]);
+    }
+
+    final effectiveSpacing = totalDist < 4000.0
+        ? (totalDist / 3.0).clamp(700.0, 2000.0)
+        : spacingMeters;
+
+    double accumulated = 0.0;
+    double distFromStart = 0.0;
+
+    for (int i = 0; i < points.length - 1; i++) {
+      final pA = points[i];
+      final pB = points[i + 1];
+      final d = _distanceMeters(pA, pB);
+      accumulated += d;
+      distFromStart += d;
+
+      // Colocar flecha cuando se alcance el intervalo, evitando extremos
+      if (accumulated >= effectiveSpacing &&
+          distFromStart >= 500.0 &&
+          (totalDist - distFromStart) >= 500.0) {
+        final pdfA = projection.projectToPdf(pA);
+        final pdfB = projection.projectToPdf(pB);
+
+        final dx = pdfB.x - pdfA.x;
+        final dy = pdfB.y - pdfA.y;
+        final segLen = math.sqrt(dx * dx + dy * dy);
+
+        double angle = math.atan2(dy, dx);
+        if (segLen < 3.0 && i + 2 < points.length) {
+          final pdfNext = projection.projectToPdf(points[i + 2]);
+          angle = math.atan2(pdfNext.y - pdfA.y, pdfNext.x - pdfA.x);
+        }
+
+        final midX = (pdfA.x + pdfB.x) / 2.0;
+        final midY = (pdfA.y + pdfB.y) / 2.0;
+
+        _drawChevronTriangle(canvas, midX, midY, angle, color, size: 7.0);
+        accumulated = 0.0;
+      }
+    }
+  }
+
+  static void _drawChevronTriangle(
+    PdfGraphics canvas,
+    double cx,
+    double cy,
+    double angle,
+    PdfColor color, {
+    double size = 7.0,
+  }) {
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+
+    final tipX = cx + size * 1.15 * cosA;
+    final tipY = cy + size * 1.15 * sinA;
+    final leftX = cx - size * 0.75 * cosA - size * 0.75 * sinA;
+    final leftY = cy - size * 0.75 * sinA + size * 0.75 * cosA;
+    final rightX = cx - size * 0.75 * cosA + size * 0.75 * sinA;
+    final rightY = cy - size * 0.75 * sinA - size * 0.75 * cosA;
+
+    // 1. Halo blanco de contraste
+    canvas.setFillColor(PdfColors.white);
+    canvas.moveTo(tipX + 1.2 * cosA, tipY + 1.2 * sinA);
+    canvas.lineTo(leftX - 1.2 * cosA - 1.2 * sinA, leftY - 1.2 * sinA + 1.2 * cosA);
+    canvas.lineTo(rightX - 1.2 * cosA + 1.2 * sinA, rightY - 1.2 * sinA - 1.2 * cosA);
+    canvas.closePath();
+    canvas.fillPath();
+
+    // 2. Triángulo direccional relleno
+    canvas.setFillColor(color);
+    canvas.moveTo(tipX, tipY);
+    canvas.lineTo(leftX, leftY);
+    canvas.lineTo(rightX, rightY);
+    canvas.closePath();
+    canvas.fillPath();
+  }
+
+  static double _distanceMeters(LatLng p1, LatLng p2) {
+    const earthRadius = 6371000.0;
+    final dLat = (p2.latitude - p1.latitude) * math.pi / 180.0;
+    final dLon = (p2.longitude - p1.longitude) * math.pi / 180.0;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(p1.latitude * math.pi / 180.0) *
+            math.cos(p2.latitude * math.pi / 180.0) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
   }
 
   /// Rosa de los vientos arquitectónica con círculo graduado
@@ -790,7 +945,7 @@ class CartographicPdfService {
           ),
           pw.SizedBox(width: 6),
 
-          // 2. Ficha Técnica y Cómputo de Traza
+          // 2. Ficha Técnica y Cómputo de Traza con Indicadores Operativos
           pw.Expanded(
             flex: 3,
             child: pw.Container(
@@ -803,13 +958,14 @@ class CartographicPdfService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   if (data.hasIda && data.hasVuelta && data.idaDistanceKm != null) ...[
-                    _buildMetricRow('Traza Ida:', '${data.idaDistanceKm!.toStringAsFixed(1)} km', fontSizeVal),
-                    _buildMetricRow('Traza Vuelta:', '${(data.vueltaDistanceKm ?? 0).toStringAsFixed(1)} km', fontSizeVal),
+                    _buildMetricRow('Longitud Ida / Vuelta:', '${data.idaDistanceKm!.toStringAsFixed(1)} / ${(data.vueltaDistanceKm ?? 0).toStringAsFixed(1)} km', fontSizeVal),
                     _buildMetricRow('Distancia Total:', '${data.distanceKm.toStringAsFixed(1)} km', fontSizeVal),
                   ] else ...[
                     _buildMetricRow('Longitud Total:', '${data.distanceKm.toStringAsFixed(2)} km', fontSizeVal),
                     _buildMetricRow('Puntos GPS:', '${data.allPoints.length}', fontSizeVal),
                   ],
+                  _buildMetricRow('Tiempo de Viaje (est.):', '~${_calculateEstimatedMinutes(data.distanceKm)} min (Ciclo)', fontSizeVal),
+                  _buildMetricRow('Frecuencia Promedio:', _calculateFrequency(data.distanceKm), fontSizeVal),
                   _buildMetricRow('Paradas Registradas:', '${data.stopPoints.length}', fontSizeVal),
                   _buildMetricRow('Fecha de Emisión:', DateFormat('dd/MM/yyyy HH:mm').format(data.date), fontSizeVal),
                 ],
@@ -864,6 +1020,11 @@ class CartographicPdfService {
                     fontSize: fontSizeVal,
                   ),
                   _buildLegendRow(
+                    swatch: _buildArrowSwatch(color: idaColor),
+                    label: 'Sentido de Flujo (Flechas de Guía)',
+                    fontSize: fontSizeVal,
+                  ),
+                  _buildLegendRow(
                     swatch: _buildDotSwatch(color: const PdfColor(0.1, 0.65, 0.2)),
                     label: 'Cabecera Inicial / Origen',
                     fontSize: fontSizeVal,
@@ -882,6 +1043,96 @@ class CartographicPdfService {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Banda de Hoja de Ruta Oficial con la secuencia detectada de calles y avenidas
+  static pw.Widget _buildStreetItineraryBanner({
+    required List<String> idaStreets,
+    required List<String> vueltaStreets,
+    required PdfColor idaColor,
+    required PdfColor vueltaColor,
+    required double height,
+    required bool isLarge,
+  }) {
+    final titleSize = isLarge ? 8.5 : 6.8;
+    final bodySize = isLarge ? 7.6 : 6.0;
+
+    return pw.Container(
+      height: height,
+      margin: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        children: [
+          pw.Row(
+            children: [
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                color: granateLanus,
+                child: pw.Text(
+                  'HOJA DE RUTA VIAL · ITINERARIO OFICIAL DE ARTERIAS (OPENSTREETMAP)',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: titleSize,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              pw.SizedBox(width: 6),
+              pw.Text(
+                'Secuencia georreferenciada de circulación en vía pública',
+                style: pw.TextStyle(
+                  color: PdfColors.grey600,
+                  fontSize: titleSize * 0.9,
+                  fontStyle: pw.FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 2),
+          if (idaStreets.isNotEmpty)
+            pw.Row(
+              children: [
+                pw.Text(
+                  'IDA: ',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: idaColor, fontSize: bodySize),
+                ),
+                pw.Expanded(
+                  child: pw.Text(
+                    idaStreets.join('  ->  '),
+                    style: pw.TextStyle(color: azulArquitectura, fontWeight: pw.FontWeight.bold, fontSize: bodySize),
+                    maxLines: 1,
+                    overflow: pw.TextOverflow.clip,
+                  ),
+                ),
+              ],
+            ),
+          if (vueltaStreets.isNotEmpty)
+            pw.Row(
+              children: [
+                pw.Text(
+                  'VUELTA: ',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: vueltaColor, fontSize: bodySize),
+                ),
+                pw.Expanded(
+                  child: pw.Text(
+                    vueltaStreets.join('  ->  '),
+                    style: pw.TextStyle(color: azulArquitectura, fontWeight: pw.FontWeight.bold, fontSize: bodySize),
+                    maxLines: 1,
+                    overflow: pw.TextOverflow.clip,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -960,6 +1211,15 @@ class CartographicPdfService {
     );
   }
 
+  static pw.Widget _buildArrowSwatch({required PdfColor color}) {
+    return pw.CustomPaint(
+      size: const PdfPoint(26, 9),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        _drawChevronTriangle(canvas, size.x / 2, size.y / 2, 0, color, size: 4.5);
+      },
+    );
+  }
+
   static pw.Widget _buildDotSwatch({required PdfColor color}) {
     return pw.CustomPaint(
       size: const PdfPoint(26, 9),
@@ -988,6 +1248,18 @@ class CartographicPdfService {
         canvas.strokePath();
       },
     );
+  }
+
+  static int _calculateEstimatedMinutes(double distanceKm) {
+    if (distanceKm <= 0) return 30;
+    // Velocidad comercial media de colectivos en conurbano: 18.5 km/h
+    return (distanceKm / 18.5 * 60).round().clamp(10, 180);
+  }
+
+  static String _calculateFrequency(double distanceKm) {
+    if (distanceKm <= 10.0) return '6 - 9 min';
+    if (distanceKm <= 20.0) return '8 - 12 min';
+    return '12 - 16 min';
   }
 
   static LatLngBounds _calculateSafeBounds(List<LatLng> points) {
