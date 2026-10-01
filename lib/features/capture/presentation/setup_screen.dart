@@ -44,7 +44,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final lines = await transportRepo.getAllLines();
     if (lines.isNotEmpty) {
       final defaultLine = lines.first;
-      final branches = await transportRepo.getBranchesForLine(defaultLine.id);
+      final branches = await transportRepo.getBranchesForLineEntity(defaultLine);
       setState(() {
         _lines = lines;
         _selectedLine = defaultLine;
@@ -72,7 +72,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         _domainController.text = last.trip.domain ?? '';
         _driverController.text = last.trip.driverName ?? '';
       });
-      final branches = await ref.read(transportRepositoryProvider).getBranchesForLine(last.line.id);
+      final branches = await ref.read(transportRepositoryProvider).getBranchesForLineEntity(last.line);
       setState(() {
         _branches = branches;
         _selectedBranch = branches.firstWhere((b) => b.id == last.branch.id, orElse: () => _selectedBranch ?? last.branch);
@@ -86,7 +86,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       _selectedLine = line;
       _isLoading = true;
     });
-    final branches = await ref.read(transportRepositoryProvider).getBranchesForLine(line.id);
+    final branches = await ref.read(transportRepositoryProvider).getBranchesForLineEntity(line);
     setState(() {
       _branches = branches;
       _selectedBranch = branches.isNotEmpty ? branches.first : null;
@@ -160,7 +160,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           children: [
             Icon(Icons.directions_bus, size: 28),
             SizedBox(width: 8),
-            Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [

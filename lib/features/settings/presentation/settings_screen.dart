@@ -84,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Bitácora GPS · Sistema de Relevamiento',
+                      'Lanús Digital · Movilidad y Transporte',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

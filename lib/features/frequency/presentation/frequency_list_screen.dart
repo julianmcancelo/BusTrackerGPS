@@ -33,6 +33,7 @@ class _FrequencyListScreenState extends ConsumerState<FrequencyListScreen> {
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 controller: titleController,
@@ -43,6 +44,24 @@ class _FrequencyListScreenState extends ConsumerState<FrequencyListScreen> {
                   prefixIcon: Icon(Icons.label_outline),
                 ),
               ),
+              const SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    'Hora Pico Mañana',
+                    'Hora Pico Tarde',
+                    'Control General',
+                  ].map((s) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ActionChip(
+                      label: Text(s, style: const TextStyle(fontSize: 10)),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => titleController.text = s,
+                    ),
+                  )).toList(),
+                ),
+              ),
               const SizedBox(height: 10),
               TextField(
                 controller: checkpointController,
@@ -51,6 +70,25 @@ class _FrequencyListScreenState extends ConsumerState<FrequencyListScreen> {
                   hintText: 'Ej. Cruce Gerli / Yrigoyen y 25 de Mayo',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    'Estación Lanús (Yrigoyen)',
+                    'Cruce Gerli (Yrigoyen y 25 de Mayo)',
+                    'Estación Escalada',
+                    'Monte Chingolo (Lynch y Roma)',
+                  ].map((s) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ActionChip(
+                      label: Text(s, style: const TextStyle(fontSize: 10)),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => checkpointController.text = s,
+                    ),
+                  )).toList(),
                 ),
               ),
               const SizedBox(height: 10),

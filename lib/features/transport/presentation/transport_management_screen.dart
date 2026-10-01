@@ -7,6 +7,7 @@ import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/widgets/app_bottom_nav_bar.dart';
+import '../../../core/utils/transport_utils.dart';
 
 class TransportManagementScreen extends ConsumerStatefulWidget {
   const TransportManagementScreen({super.key});
@@ -218,10 +219,10 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
     );
   }
 
-  Future<void> _syncBitacora() async {
+  Future<void> _syncLanusDigital() async {
     setState(() => _isSyncing = true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sincronizando recorridos desde Bitácora GPS...')),
+      const SnackBar(content: Text('Sincronizando recorridos desde Lanús Digital...')),
     );
     try {
       final count = await SyncService.fetchBitacoraGpsSurveys(ref.read(databaseProvider));
@@ -261,8 +262,8 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                 )
               : IconButton(
                   icon: const Icon(Icons.cloud_sync_outlined),
-                  tooltip: 'Sincronizar Bitácora GPS',
-                  onPressed: _syncBitacora,
+                  tooltip: 'Sincronizar con Lanús Digital',
+                  onPressed: _syncLanusDigital,
                 ),
           IconButton(
             icon: const Icon(Icons.timer_outlined),
@@ -371,7 +372,7 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                               const SizedBox(height: 6),
                               Text(
                                 _searchQuery.isEmpty
-                                    ? 'Pulsa en "+ NUEVA LÍNEA" o sincroniza con Bitácora GPS'
+                                    ? 'Pulsa en "+ NUEVA LÍNEA" o sincroniza con Lanús Digital'
                                     : 'Intenta con otro término de búsqueda',
                                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                 textAlign: TextAlign.center,
@@ -379,9 +380,9 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                               if (_searchQuery.isEmpty) ...[
                                 const SizedBox(height: 14),
                                 OutlinedButton.icon(
-                                  onPressed: _syncBitacora,
+                                  onPressed: _syncLanusDigital,
                                   icon: const Icon(Icons.cloud_sync, size: 18),
-                                  label: const Text('SINCRONIZAR BITÁCORA GPS'),
+                                  label: const Text('SINCRONIZAR LANÚS DIGITAL'),
                                 ),
                               ],
                             ],
@@ -445,11 +446,7 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
           height: 36,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: TransportUtils.getLineColor(line.number),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -660,7 +657,7 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                           children: [
                             Icon(Icons.cloud_outlined, size: 9, color: Colors.blue),
                             SizedBox(width: 2),
-                            Text('Bitácora GPS', style: TextStyle(fontSize: 8, color: Colors.blue, fontWeight: FontWeight.w600)),
+                            Text('Lanús Digital', style: TextStyle(fontSize: 8, color: Colors.blue, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),

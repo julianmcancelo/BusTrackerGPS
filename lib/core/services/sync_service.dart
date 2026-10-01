@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../database/database.dart';
 import '../constants/api_credentials.dart';
+import '../utils/transport_utils.dart';
 
 class SyncResult {
   final bool success;
@@ -209,7 +210,8 @@ class SyncService {
         final List<dynamic> data = decoded is List ? decoded : (decoded['lineas'] ?? decoded['data'] ?? []);
 
         for (final item in data) {
-          final numero = (item['numero'] ?? item['linea'] ?? item['nombre'] ?? '').toString();
+          final rawNumero = (item['numero'] ?? item['linea'] ?? item['nombre'] ?? '').toString();
+          final numero = TransportUtils.normalizeLineNumber(rawNumero);
           final ramal = (item['subcategoria'] ?? item['ramal'] ?? item['nombre_ramal'] ?? 'Principal').toString();
 
           if (numero.isEmpty) continue;
@@ -271,8 +273,9 @@ class SyncService {
       }
     } catch (_) {}
 
-    // 2. Descargar todos los relevamientos realizados con Bitácora GPS por otros usuarios
+    // 2. Descargar todos los relevamientos realizados en Lanús Digital por otros usuarios
     await fetchBitacoraGpsSurveys(db);
+    await db.cleanupAndMergeDuplicateLines();
 
     final totalActiveLines = await (db.select(db.lines)..where((l) => l.active.equals(true))).get();
     return updatedCount > 0 ? updatedCount : totalActiveLines.length;
@@ -299,7 +302,8 @@ class SyncService {
             : (decoded['items'] ?? decoded['relevamientos'] ?? decoded['trips'] ?? []);
 
         for (final item in items) {
-          final lineaNumero = (item['lineaNumero'] ?? item['linea'] ?? item['numero'] ?? '').toString();
+          final rawNumero = (item['lineaNumero'] ?? item['linea'] ?? item['numero'] ?? '').toString();
+          final lineaNumero = TransportUtils.normalizeLineNumber(rawNumero);
           final ramal = (item['ramal'] ?? item['subcategoria'] ?? 'Principal').toString();
           final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
           final datosGeo = item['datosGeo'] ?? item['datos_geo'] ?? item['geoData'] ?? item['geojson'] ?? item['geo_json'] ?? item['recorrido'] ?? item['trazas'] ?? item['route_data'];
@@ -373,6 +377,7 @@ class SyncService {
         }
       }
     } catch (_) {}
+    await db.cleanupAndMergeDuplicateLines();
     return importedCount;
   }
 }

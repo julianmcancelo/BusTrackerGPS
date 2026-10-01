@@ -128,7 +128,7 @@ class _TripListScreenState extends ConsumerState<TripListScreen> with SingleTick
           controller: _tabController,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
-            Tab(icon: Icon(Icons.cloud_outlined, size: 20), text: 'Trazas Bitácora GPS'),
+            Tab(icon: Icon(Icons.cloud_outlined, size: 20), text: 'Trazas Lanús Digital'),
             Tab(icon: Icon(Icons.phone_android, size: 20), text: 'Mis Grabaciones Locales'),
           ],
         ),
@@ -251,7 +251,7 @@ class _TripListScreenState extends ConsumerState<TripListScreen> with SingleTick
                   Icon(Icons.cloud_off_outlined, size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   const Text(
-                    'No hay trazas de Bitácora GPS disponibles',
+                    'No hay trazas de Lanús Digital disponibles',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),

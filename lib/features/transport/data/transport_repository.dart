@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
+import '../../../core/utils/transport_utils.dart';
 
 final transportRepositoryProvider = Provider<TransportRepository>((ref) {
   return TransportRepository(ref.watch(databaseProvider));
@@ -23,7 +24,7 @@ class TransportRepository {
         .watch()
         .map((lines) {
       final seen = <String>{};
-      return lines.where((l) => seen.add(l.number.trim().toLowerCase())).toList();
+      return lines.where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number))).toList();
     });
   }
 
@@ -34,9 +35,9 @@ class TransportRepository {
           ..orderBy([(t) => OrderingTerm.asc(t.number)]))
         .get();
     
-    // Deduplicate by number
+    // Deduplicate strictly by canonical line number
     final seen = <String>{};
-    return allLines.where((l) => seen.add(l.number.trim().toLowerCase())).toList();
+    return allLines.where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number))).toList();
   }
 
   Stream<List<BranchEntry>> watchBranchesForLine(int lineId) {

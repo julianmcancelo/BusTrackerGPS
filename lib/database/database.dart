@@ -13,6 +13,7 @@ import 'tables/offline_map_regions_table.dart';
 import 'tables/settings_table.dart';
 
 import 'tables/frequency_tables.dart';
+import '../core/utils/transport_utils.dart';
 
 part 'database.g.dart';
 
@@ -169,6 +170,95 @@ class AppDatabase extends _$AppDatabase {
             ),
           );
         }
+      }
+    }
+
+    // Unifica y limpia de raíz posibles duplicados existentes
+    await cleanupAndMergeDuplicateLines();
+  }
+
+  /// Limpia y fusiona de manera idempotente cualquier línea o ramal duplicado en la base de datos local.
+  Future<void> cleanupAndMergeDuplicateLines() async {
+    final allLines = await select(lines).get();
+    if (allLines.isEmpty) return;
+
+    final Map<String, List<LineEntry>> grouped = {};
+    for (final line in allLines) {
+      final canon = TransportUtils.normalizeLineNumber(line.number);
+      if (canon.isEmpty) continue;
+      grouped.putIfAbsent(canon, () => []).add(line);
+    }
+
+    for (final entry in grouped.entries) {
+      final canonNumber = entry.key;
+      final lineList = entry.value;
+
+      if (lineList.length <= 1) {
+        if (lineList.first.number != canonNumber) {
+          await (update(lines)..where((l) => l.id.equals(lineList.first.id))).write(
+            LinesCompanion(number: Value(canonNumber)),
+          );
+        }
+        continue;
+      }
+
+      // Ordena: favorece la que ya tiene el número canónico y nombre más largo
+      lineList.sort((a, b) {
+        if (a.number == canonNumber && b.number != canonNumber) return -1;
+        if (b.number == canonNumber && a.number != canonNumber) return 1;
+        return b.name.length.compareTo(a.name.length);
+      });
+
+      final master = lineList.first;
+      if (master.number != canonNumber) {
+        await (update(lines)..where((l) => l.id.equals(master.id))).write(
+          LinesCompanion(number: Value(canonNumber)),
+        );
+      }
+
+      final masterBranches = await (select(branches)..where((b) => b.lineId.equals(master.id))).get();
+
+      for (int i = 1; i < lineList.length; i++) {
+        final dup = lineList[i];
+
+        // 1. Reasignar o fusionar ramales
+        final dupBranches = await (select(branches)..where((b) => b.lineId.equals(dup.id))).get();
+        for (final dupBranch in dupBranches) {
+          final dupBranchName = dupBranch.name.trim().toLowerCase();
+          final matchingMasterBranch = masterBranches.where((mb) => mb.name.trim().toLowerCase() == dupBranchName).firstOrNull;
+
+          if (matchingMasterBranch != null) {
+            await (update(trips)..where((t) => t.branchId.equals(dupBranch.id))).write(
+              TripsCompanion(lineId: Value(master.id), branchId: Value(matchingMasterBranch.id)),
+            );
+            await (update(referenceRoutes)..where((r) => r.branchId.equals(dupBranch.id))).write(
+              ReferenceRoutesCompanion(lineId: Value(master.id), branchId: Value(matchingMasterBranch.id)),
+            );
+            await (update(frequencyRecords)..where((f) => f.branchId.equals(dupBranch.id))).write(
+              FrequencyRecordsCompanion(lineId: Value(master.id), branchId: Value(matchingMasterBranch.id)),
+            );
+            await (delete(branches)..where((b) => b.id.equals(dupBranch.id))).go();
+          } else {
+            await (update(branches)..where((b) => b.id.equals(dupBranch.id))).write(
+              BranchesCompanion(lineId: Value(master.id)),
+            );
+            masterBranches.add(dupBranch);
+          }
+        }
+
+        // 2. Reasignar cualquier viaje, traza o registro de frecuencia restante
+        await (update(trips)..where((t) => t.lineId.equals(dup.id))).write(
+          TripsCompanion(lineId: Value(master.id)),
+        );
+        await (update(referenceRoutes)..where((r) => r.lineId.equals(dup.id))).write(
+          ReferenceRoutesCompanion(lineId: Value(master.id)),
+        );
+        await (update(frequencyRecords)..where((f) => f.lineId.equals(dup.id))).write(
+          FrequencyRecordsCompanion(lineId: Value(master.id)),
+        );
+
+        // 3. Eliminar la línea duplicada
+        await (delete(lines)..where((l) => l.id.equals(dup.id))).go();
       }
     }
   }

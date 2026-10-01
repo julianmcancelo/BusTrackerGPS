@@ -93,7 +93,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     final lines = await transportRepo.getAllLines();
     if (lines.isNotEmpty) {
       final defaultLine = lines.first;
-      final branches = await transportRepo.getBranchesForLine(defaultLine.id);
+      final branches = await transportRepo.getBranchesForLineEntity(defaultLine);
       setState(() {
         _lines = lines;
         _selectedLine = defaultLine;
@@ -128,7 +128,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     setState(() {
       _selectedLine = line;
     });
-    final branches = await ref.read(transportRepositoryProvider).getBranchesForLine(line.id);
+    final branches = await ref.read(transportRepositoryProvider).getBranchesForLineEntity(line);
     setState(() {
       _branches = branches;
       _selectedBranch = branches.isNotEmpty ? branches.first : null;

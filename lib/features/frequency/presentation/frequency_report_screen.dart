@@ -7,6 +7,7 @@ import '../domain/frequency_models.dart';
 import '../domain/frequency_analytics.dart';
 import '../services/frequency_pdf_service.dart';
 import '../services/frequency_csv_service.dart';
+import '../../../core/utils/transport_utils.dart';
 
 class FrequencyReportScreen extends ConsumerStatefulWidget {
   final int sessionId;
@@ -226,7 +227,7 @@ class _FrequencyReportScreenState extends ConsumerState<FrequencyReportScreen> {
                     width: 34,
                     height: 28,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(color: TransportUtils.getLineColor(r.line.number), borderRadius: BorderRadius.circular(4)),
                     child: Text(r.line.number, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
                   title: Text('${r.branch.name} (${rec.direction})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -343,7 +344,7 @@ class _FrequencyReportScreenState extends ConsumerState<FrequencyReportScreen> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(color: TransportUtils.getLineColor(b.line.number), borderRadius: BorderRadius.circular(6)),
               child: Text(b.line.number, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
             ),
             const SizedBox(width: 10),

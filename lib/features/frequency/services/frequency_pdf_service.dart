@@ -37,13 +37,13 @@ class FrequencyPdfService {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'BITÁCORA GPS · AUDITORÍA DE TRANSPORTE PÚBLICO',
-                      style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 13),
+                      'MUNICIPIO DE LANÚS · SUBSECRETARÍA DE MOVILIDAD Y TRANSPORTE',
+                      style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11),
                     ),
                     pw.SizedBox(height: 3),
                     pw.Text(
-                      'INFORME OFICIAL DE CONTROL DE FRECUENCIAS Y HEADWAYS',
-                      style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                      'LANÚS DIGITAL · INFORME OFICIAL DE AUDITORÍA Y FRECUENCIA',
+                      style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold),
                     ),
                   ],
                 ),
@@ -229,7 +229,7 @@ class FrequencyPdfService {
                   pw.Container(width: 150, height: 1, color: PdfColors.black),
                   pw.SizedBox(height: 4),
                   pw.Text('Supervisión / Autoridad de Transporte', style: const pw.TextStyle(fontSize: 8)),
-                  pw.Text('Bitácora GPS Control', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Lanús Digital Transporte', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
             ],
