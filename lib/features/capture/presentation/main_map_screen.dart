@@ -19,6 +19,7 @@ import '../data/gps_repository.dart';
 import '../../../core/utils/line_hierarchy_ext.dart';
 import '../../../core/permissions/permissions_handler.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class MainMapScreen extends ConsumerStatefulWidget {
   const MainMapScreen({super.key});
@@ -1449,36 +1450,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        backgroundColor: Colors.white,
-        elevation: 8,
-        onDestinationSelected: (idx) {
-          switch (idx) {
-            case 0:
-              break;
-            case 1:
-              context.push('/trips');
-              break;
-            case 2:
-              context.push('/transport');
-              break;
-            case 3:
-              context.push('/maps');
-              break;
-            case 4:
-              context.push('/settings');
-              break;
-          }
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Mapa'),
-          NavigationDestination(icon: Icon(Icons.list_alt_outlined), selectedIcon: Icon(Icons.list_alt), label: 'Recorridos'),
-          NavigationDestination(icon: Icon(Icons.directions_bus_outlined), selectedIcon: Icon(Icons.directions_bus), label: 'Líneas'),
-          NavigationDestination(icon: Icon(Icons.cloud_download_outlined), selectedIcon: Icon(Icons.cloud_download), label: 'Mapas'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Ajustes'),
-        ],
-      ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
     ),
   );
 }

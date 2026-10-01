@@ -8,6 +8,7 @@ import '../../../core/services/sync_service.dart';
 import '../../capture/data/gps_repository.dart';
 import '../data/trips_repository.dart';
 import '../../../core/utils/geo_utils.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class TripListScreen extends ConsumerStatefulWidget {
   const TripListScreen({super.key});
@@ -16,20 +17,22 @@ class TripListScreen extends ConsumerStatefulWidget {
   ConsumerState<TripListScreen> createState() => _TripListScreenState();
 }
 
-class _TripListScreenState extends ConsumerState<TripListScreen> {
+class _TripListScreenState extends ConsumerState<TripListScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _directionFilter;
-  String? _hierarchyFilter;
   final Set<String> _syncingTrips = {};
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -113,195 +116,413 @@ class _TripListScreenState extends ConsumerState<TripListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('HISTORIAL DE RELEVAMIENTOS'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          tabs: const [
+            Tab(icon: Icon(Icons.cloud_outlined, size: 20), text: 'Trazas Bitácora GPS'),
+            Tab(icon: Icon(Icons.phone_android, size: 20), text: 'Mis Grabaciones Locales'),
+          ],
         ),
       ),
       body: Column(
         children: [
-          // Search & Direction Filter Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          // Search and Filter Bar
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por línea, ramal...',
-                    isDense: true,
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por línea, ramal...',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 16),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    onChanged: (v) => setState(() => _searchQuery = v.trim()),
                   ),
-                  onChanged: (v) => setState(() => _searchQuery = v.trim()),
                 ),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      FilterChip(
-                        label: const Text('Nacional'),
-                        selected: _hierarchyFilter == 'Jurisdicción Nacional',
-                        onSelected: (_) => setState(() => _hierarchyFilter = _hierarchyFilter == 'Jurisdicción Nacional' ? null : 'Jurisdicción Nacional'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('Provincial'),
-                        selected: _hierarchyFilter == 'Jurisdicción Provincial',
-                        onSelected: (_) => setState(() => _hierarchyFilter = _hierarchyFilter == 'Jurisdicción Provincial' ? null : 'Jurisdicción Provincial'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('Municipal'),
-                        selected: _hierarchyFilter == 'Jurisdicción Municipal',
-                        onSelected: (_) => setState(() => _hierarchyFilter = _hierarchyFilter == 'Jurisdicción Municipal' ? null : 'Jurisdicción Municipal'),
-                      ),
-                      const SizedBox(width: 16),
-                      const Text('|', style: TextStyle(color: Colors.grey)),
-                      const SizedBox(width: 16),
-                      FilterChip(
-                        label: const Text('Todos'),
-                        selected: _directionFilter == null,
-                        onSelected: (_) => setState(() => _directionFilter = null),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('IDA'),
-                        selected: _directionFilter == 'IDA',
-                        onSelected: (_) => setState(() => _directionFilter = 'IDA'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('VUELTA'),
-                        selected: _directionFilter == 'VUELTA',
-                        onSelected: (_) => setState(() => _directionFilter = 'VUELTA'),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('Todos', style: TextStyle(fontSize: 11)),
+                      selected: _directionFilter == null,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => setState(() => _directionFilter = null),
+                    ),
+                    const SizedBox(width: 6),
+                    FilterChip(
+                      label: const Text('IDA', style: TextStyle(fontSize: 11)),
+                      selected: _directionFilter == 'IDA',
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => setState(() => _directionFilter = 'IDA'),
+                    ),
+                    const SizedBox(width: 6),
+                    FilterChip(
+                      label: const Text('VUELTA', style: TextStyle(fontSize: 11)),
+                      selected: _directionFilter == 'VUELTA',
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => setState(() => _directionFilter = 'VUELTA'),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          // Trip List
+          // TabBarView Content
           Expanded(
-            child: StreamBuilder<List<TripWithDetails>>(
-                  stream: tripsRepo.watchTrips(
-                    searchQuery: _searchQuery,
-                    direction: _directionFilter,
-                  ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final trips = snapshot.data ?? [];
-                    if (trips.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.directions_bus_outlined, size: 54, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Aún no hay viajes grabados en este dispositivo',
-                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Bitácora GPS Reference Routes
+                _buildReferenceRoutesTab(tripsRepo),
 
-                    return ListView.builder(
-                      itemCount: trips.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      itemBuilder: (context, idx) {
-                        final item = trips[idx];
-                        final t = item.trip;
-                        final isSyncing = _syncingTrips.contains(t.id);
-                        final startTimeStr = DateFormat('dd/MM/yyyy · HH:mm').format(t.startedAt);
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue.shade50,
-                              child: const Icon(Icons.directions_bus, color: Color(0xFF1E88E5)),
-                            ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${item.line.number} · ${item.branch.name} · ${t.direction}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                  ),
-                                ),
-                                if (isSyncing)
-                                  const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                else if (t.syncStatus == 'SYNCED')
-                                  const Tooltip(
-                                    message: 'Sincronizado con Lanús Digital',
-                                    child: Icon(Icons.cloud_done_rounded, color: Color(0xFF16A34A), size: 22),
-                                  )
-                                else
-                                  IconButton(
-                                    icon: const Icon(Icons.cloud_upload_outlined, color: Colors.orange, size: 22),
-                                    tooltip: 'Transferir a Lanús Digital',
-                                    onPressed: () => _manualSyncTrip(item),
-                                  ),
-                              ],
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(startTimeStr, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${GeoUtils.formatDistance(t.distanceMeters)} · ${GeoUtils.formatDuration(Duration(milliseconds: t.durationMs))} · '
-                                  '${t.stopCount} paradas · ${t.incidentCount} incidencias',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
-                                  tooltip: 'Eliminar traza',
-                                  onPressed: () => _confirmDeleteTrip(item),
-                                ),
-                                const Icon(Icons.chevron_right),
-                              ],
-                            ),
-                            onTap: () {
-                              context.push('/trips/${t.id}');
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                // Tab 2: Local Recorded Trips
+                _buildLocalTripsTab(tripsRepo),
+              ],
+            ),
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
+    );
+  }
+
+  Widget _buildReferenceRoutesTab(TripsRepository tripsRepo) {
+    return StreamBuilder<List<ReferenceRouteWithDetails>>(
+      stream: tripsRepo.watchReferenceRoutes(
+        searchQuery: _searchQuery,
+        direction: _directionFilter,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final routes = snapshot.data ?? [];
+        if (routes.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cloud_off_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No hay trazas de Bitácora GPS disponibles',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ve a Ajustes > Sincronización para descargar los relevamientos de la red.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/settings'),
+                    icon: const Icon(Icons.settings, size: 16),
+                    label: const Text('IR A AJUSTES DE SINCRONIZACIÓN'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: routes.length,
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 80),
+          itemBuilder: (context, idx) {
+            final item = routes[idx];
+            final r = item.route;
+            final isIda = r.direction.toUpperCase() == 'IDA';
+
+            return Card(
+              elevation: 1,
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isIda
+                              ? [const Color(0xFF0284C7), const Color(0xFF0369A1)]
+                              : [const Color(0xFFD97706), const Color(0xFFB45309)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item.line.number,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.branch.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: (isIda ? Colors.blue : Colors.orange).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  r.direction,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: isIda ? Colors.blue.shade800 : Colors.orange.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${GeoUtils.formatDistance(item.distanceMeters)} · ${item.pointCount} puntos GPS',
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: const Icon(Icons.map_outlined, color: Color(0xFF0284C7), size: 20),
+                      tooltip: 'Ver traza en mapa',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        context.push('/reference-routes/${r.id}');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLocalTripsTab(TripsRepository tripsRepo) {
+    return StreamBuilder<List<TripWithDetails>>(
+      stream: tripsRepo.watchTrips(
+        searchQuery: _searchQuery,
+        direction: _directionFilter,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final trips = snapshot.data ?? [];
+        if (trips.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.directions_bus_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No hay viajes grabados en este dispositivo',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Inicia una grabación desde la pantalla principal para registrar un recorrido.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.play_arrow, size: 16),
+                    label: const Text('INICIAR NUEVO RELEVAMIENTO'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: trips.length,
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 80),
+          itemBuilder: (context, idx) {
+            final item = trips[idx];
+            final t = item.trip;
+            final isSyncing = _syncingTrips.contains(t.id);
+            final isSynced = t.syncStatus == 'SYNCED';
+            final isIda = t.direction.toUpperCase() == 'IDA';
+
+            return Card(
+              elevation: 1,
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => context.push('/trips/${t.id}'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isIda
+                                ? [const Color(0xFF0284C7), const Color(0xFF0369A1)]
+                                : [const Color(0xFFD97706), const Color(0xFFB45309)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          item.line.number,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.branch.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: (isIda ? Colors.blue : Colors.orange).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    t.direction,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: isIda ? Colors.blue.shade800 : Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${DateFormat('dd/MM/yyyy HH:mm').format(t.startedAt)} · ${GeoUtils.formatDistance(t.distanceMeters)}',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (isSyncing)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (!isSynced)
+                        IconButton(
+                          icon: const Icon(Icons.cloud_upload_outlined, color: Colors.blue, size: 20),
+                          tooltip: 'Sincronizar a Lanús Digital',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _manualSyncTrip(item),
+                        )
+                      else
+                        const Icon(Icons.cloud_done, color: Colors.green, size: 18),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                        tooltip: 'Eliminar viaje',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _confirmDeleteTrip(item),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

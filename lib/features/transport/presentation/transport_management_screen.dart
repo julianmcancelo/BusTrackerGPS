@@ -6,6 +6,7 @@ import '../../trips/data/trips_repository.dart';
 import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class TransportManagementScreen extends ConsumerStatefulWidget {
   const TransportManagementScreen({super.key});
@@ -277,7 +278,9 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
             return const Center(child: CircularProgressIndicator());
           }
 
-          final allLines = snapshot.data ?? [];
+          final rawLines = snapshot.data ?? [];
+          final seenNumbers = <String>{};
+          final allLines = rawLines.where((l) => seenNumbers.add(l.number.trim().toLowerCase())).toList();
 
           // Filter by search query
           final lines = allLines.where((l) {
@@ -393,6 +396,7 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
           );
         },
       ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 2),
     );
   }
 
@@ -681,7 +685,6 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                   ),
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, size: 18),
-                  visualDensity: VisualDensity.compact,
                   onSelected: (val) {
                     if (val == 'edit') {
                       _showAddOrEditBranchDialog(lineId: line.id, branch: branch);

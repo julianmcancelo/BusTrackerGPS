@@ -44,6 +44,13 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/reference-route/:id',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+        return ReferenceRouteDetailScreen(routeId: id);
+      },
+    ),
+    GoRoute(
       path: '/transport',
       name: 'transport',
       builder: (context, state) => const TransportManagementScreen(),

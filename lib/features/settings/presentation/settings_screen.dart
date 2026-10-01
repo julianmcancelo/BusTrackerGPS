@@ -4,6 +4,7 @@ import 'general_settings_screen.dart';
 import 'backup_settings_screen.dart';
 import 'sync_settings_screen.dart';
 import 'update_settings_screen.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -106,6 +107,7 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 4),
     );
   }
 }
