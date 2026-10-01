@@ -514,7 +514,7 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                 child: const Text('Descargado', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
               )
             : FilledButton.tonal(
-                style: FilledButton.tonalStyleFrom(
+                style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   visualDensity: VisualDensity.compact,
                 ),

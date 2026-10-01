@@ -94,7 +94,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Versión 1.0.18 (Build 18)',
+                      'Versión 1.0.19 (Build 19)',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade500,
