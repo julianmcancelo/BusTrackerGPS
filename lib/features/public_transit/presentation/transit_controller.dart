@@ -117,10 +117,14 @@ class TransitNotifier extends Notifier<TransitState> {
 
   Future<void> _init() async {
     state = state.copyWith(isLoading: true);
+
+    // 1. Cargar inmediatamente desde asset preinstalado si no está cargado
+    await SyncService.seedFromBundledAsset(repo.db);
+
     var network = await repo.getTransitNetwork();
 
-    // Si aún no tenemos todas las líneas oficiales de Lanús Digital (47 líneas) o faltan trazas:
-    if (network.length < 45 || network.every((l) => !l.hasRoutes)) {
+    // 2. Si aún faltan trazas o hay menos de 40 líneas:
+    if (network.length < 40 || network.every((l) => !l.hasRoutes)) {
       try {
         await SyncService.fetchOfficialLines(repo.db);
         network = await repo.getTransitNetwork();

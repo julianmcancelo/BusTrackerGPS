@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -194,10 +195,188 @@ class SyncService {
     }
   }
 
-  /// Descarga el catálogo oficial de líneas y ramales de Lanús Digital
+  /// Procesa e importa un lote de líneas y trazas oficiales de Lanús Digital en una única transacción SQLite ultra rápida
+  static Future<int> importCatalogData(AppDatabase db, List<dynamic> data) async {
+    if (data.isEmpty) return 0;
+    int updatedCount = 0;
+
+    await db.transaction(() async {
+      // 1. Pre-cargar caché en memoria para evitar cientos de SELECTs individuales
+      final existingLines = await db.select(db.lines).get();
+      final lineByNumber = <String, LineEntry>{
+        for (final l in existingLines) TransportUtils.normalizeLineNumber(l.number): l,
+      };
+
+      final existingBranches = await db.select(db.branches).get();
+      final branchByKey = <String, BranchEntry>{
+        for (final b in existingBranches) '${b.lineId}_${b.name.trim().toLowerCase()}': b,
+      };
+
+      final existingRoutes = await db.select(db.referenceRoutes).get();
+      final routeByKey = <String, ReferenceRouteEntry>{
+        for (final r in existingRoutes) '${r.lineId}_${r.branchId}_${r.direction.toUpperCase()}': r,
+      };
+
+      for (final item in data) {
+        if (item is! Map) continue;
+        final rawNumero = (item['numero'] ?? item['linea'] ?? item['nombre'] ?? '').toString();
+        final numero = TransportUtils.normalizeLineNumber(rawNumero);
+        if (numero.isEmpty) continue;
+
+        final isMunicipal = TransportUtils.isMunicipalLine(numero);
+        final lineName = item['nombre']?.toString() ?? 'Línea $numero';
+
+        // Gestión de Línea
+        var line = lineByNumber[numero];
+        int lineId;
+        if (line == null) {
+          lineId = await db.into(db.lines).insert(
+                LinesCompanion.insert(
+                  number: numero,
+                  name: lineName,
+                  active: Value(isMunicipal),
+                ),
+              );
+          line = LineEntry(
+            id: lineId,
+            number: numero,
+            name: lineName,
+            active: isMunicipal,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          lineByNumber[numero] = line;
+          updatedCount++;
+        } else {
+          lineId = line.id;
+          // Si el estado o nombre cambiaron, actualizar
+          if (line.active != isMunicipal || line.name != lineName) {
+            await (db.update(db.lines)..where((l) => l.id.equals(lineId))).write(
+              LinesCompanion(
+                name: Value(lineName),
+                active: Value(isMunicipal),
+              ),
+            );
+            lineByNumber[numero] = LineEntry(
+              id: lineId,
+              number: numero,
+              name: lineName,
+              active: isMunicipal,
+              createdAt: line.createdAt,
+              updatedAt: DateTime.now(),
+            );
+          }
+        }
+
+        // Gestión de Ramal
+        final rawRamal = (item['subcategoria'] ?? item['ramal'] ?? item['nombre_ramal'] ?? 'Principal').toString().trim();
+        final ramalKey = '${lineId}_${rawRamal.toLowerCase()}';
+        var branch = branchByKey[ramalKey];
+        int branchId;
+        final desc = item['descripcion']?.toString() ?? item['desc']?.toString();
+
+        if (branch == null) {
+          branchId = await db.into(db.branches).insert(
+                BranchesCompanion.insert(
+                  lineId: lineId,
+                  name: rawRamal,
+                  description: Value(desc),
+                ),
+              );
+          branch = BranchEntry(
+            id: branchId,
+            lineId: lineId,
+            name: rawRamal,
+            description: desc,
+            active: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          branchByKey[ramalKey] = branch;
+          updatedCount++;
+        } else {
+          branchId = branch.id;
+          if (desc != null && branch.description != desc) {
+            await (db.update(db.branches)..where((b) => b.id.equals(branchId))).write(
+              BranchesCompanion(description: Value(desc)),
+            );
+          }
+        }
+
+        // Gestión de Traza GeoJSON en ReferenceRoutes
+        final datosGeo = item['datosGeo'] ?? item['datos_geo'] ?? item['geoData'] ?? item['geojson'] ?? item['geo_json'];
+        if (datosGeo != null) {
+          final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
+          if (rawGeoString.trim().length > 20 && rawGeoString.trim() != '{}') {
+            final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase().trim();
+            final routeKey = '${lineId}_${branchId}_$sentido';
+            final routeName = 'Línea $numero - $rawRamal ($sentido)';
+
+            final existingRef = routeByKey[routeKey];
+            if (existingRef == null) {
+              final newId = await db.into(db.referenceRoutes).insert(
+                    ReferenceRoutesCompanion.insert(
+                      lineId: lineId,
+                      branchId: branchId,
+                      direction: sentido,
+                      name: routeName,
+                      format: 'GEOJSON',
+                      geoJsonData: rawGeoString,
+                    ),
+                  );
+              routeByKey[routeKey] = ReferenceRouteEntry(
+                id: newId,
+                lineId: lineId,
+                branchId: branchId,
+                direction: sentido,
+                name: routeName,
+                format: 'GEOJSON',
+                geoJsonData: rawGeoString,
+                createdAt: DateTime.now(),
+              );
+              updatedCount++;
+            } else if (existingRef.geoJsonData != rawGeoString) {
+              await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
+                ReferenceRoutesCompanion(
+                  geoJsonData: Value(rawGeoString),
+                  name: Value(routeName),
+                ),
+              );
+              updatedCount++;
+            }
+          }
+        }
+      }
+    });
+
+    await db.cleanupAndMergeDuplicateLines();
+    return updatedCount;
+  }
+
+  /// Carga de manera instantánea el paquete preinstalado de recorridos oficiales de Lanús Digital
+  static Future<int> seedFromBundledAsset(AppDatabase db) async {
+    try {
+      final existingRoutes = await (db.select(db.referenceRoutes)).get();
+      if (existingRoutes.length >= 200) {
+        return existingRoutes.length;
+      }
+
+      final jsonString = await rootBundle.loadString('assets/data/lanus_official_routes.json');
+      final dynamic decoded = jsonDecode(jsonString);
+      final List<dynamic> data = decoded is List ? decoded : (decoded['lineas'] ?? decoded['data'] ?? []);
+      return await importCatalogData(db, data);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Descarga y actualiza el catálogo oficial de líneas y ramales de Lanús Digital
   static Future<int> fetchOfficialLines(AppDatabase db) async {
     // 1. Asegura que el catálogo base municipal esté cargado en la base de datos local
     await db.seedInitialTransportData();
+
+    // 2. Cargar primero el catálogo preempaquetado si aún no se importaron los recorridos
+    await seedFromBundledAsset(db);
 
     int updatedCount = 0;
     try {
@@ -208,111 +387,12 @@ class SyncService {
       if (response.statusCode == 200) {
         final dynamic decoded = jsonDecode(response.body);
         final List<dynamic> data = decoded is List ? decoded : (decoded['lineas'] ?? decoded['data'] ?? []);
-
-        for (final item in data) {
-          final rawNumero = (item['numero'] ?? item['linea'] ?? item['nombre'] ?? '').toString();
-          final numero = TransportUtils.normalizeLineNumber(rawNumero);
-          final ramal = (item['subcategoria'] ?? item['ramal'] ?? item['nombre_ramal'] ?? 'Principal').toString();
-
-          if (numero.isEmpty) continue;
-
-          final existingLine = (await (db.select(db.lines)..where((l) => l.number.equals(numero))).get()).firstOrNull;
-          int lineId;
-
-          if (existingLine == null) {
-            lineId = await db.into(db.lines).insert(
-                  LinesCompanion.insert(
-                    number: numero,
-                    name: item['nombre'] ?? 'Línea $numero',
-                    active: Value(TransportUtils.isMunicipalLine(numero)),
-                  ),
-                );
-            updatedCount++;
-          } else {
-            lineId = existingLine.id;
-            // Update line name if it changed on the server, and enforce active state
-            final newName = item['nombre']?.toString() ?? 'Línea $numero';
-            await (db.update(db.lines)..where((l) => l.id.equals(lineId))).write(
-              LinesCompanion(
-                name: Value(newName),
-                active: Value(TransportUtils.isMunicipalLine(numero)),
-              ),
-            );
-            if (existingLine.name != newName) {
-              updatedCount++;
-            }
-          }
-
-          final existingBranch = (await (db.select(db.branches)
-                ..where((b) => b.lineId.equals(lineId) & b.name.equals(ramal)))
-              .get()).firstOrNull;
-
-          int branchId;
-          final newDesc = item['descripcion']?.toString() ?? item['desc']?.toString();
-          
-          if (existingBranch == null) {
-            branchId = await db.into(db.branches).insert(
-                  BranchesCompanion.insert(
-                    lineId: lineId,
-                    name: ramal,
-                    description: Value(newDesc),
-                  ),
-                );
-            updatedCount++;
-          } else {
-            branchId = existingBranch.id;
-            // Update branch description if it changed
-            if (newDesc != null && existingBranch.description != newDesc) {
-              await (db.update(db.branches)..where((b) => b.id.equals(branchId))).write(
-                BranchesCompanion(description: Value(newDesc)),
-              );
-              updatedCount++;
-            }
-          }
-
-          // Guardar traza oficial de Lanús Digital (datosGeo) en ReferenceRoutes
-          final datosGeo = item['datosGeo'] ?? item['datos_geo'] ?? item['geoData'] ?? item['geojson'] ?? item['geo_json'];
-          if (datosGeo != null) {
-            final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
-            if (rawGeoString.trim().isNotEmpty && rawGeoString != '{}') {
-              final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
-              final routeName = 'Línea $numero - $ramal ($sentido)';
-
-              final existingRef = (await (db.select(db.referenceRoutes)
-                    ..where((r) =>
-                        r.lineId.equals(lineId) &
-                        r.branchId.equals(branchId) &
-                        r.direction.equals(sentido)))
-                  .get()).firstOrNull;
-
-              if (existingRef == null) {
-                await db.into(db.referenceRoutes).insert(
-                      ReferenceRoutesCompanion.insert(
-                        lineId: lineId,
-                        branchId: branchId,
-                        direction: sentido,
-                        name: routeName,
-                        format: 'GEOJSON',
-                        geoJsonData: rawGeoString,
-                      ),
-                    );
-              } else {
-                await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
-                  ReferenceRoutesCompanion(
-                    geoJsonData: Value(rawGeoString),
-                    name: Value(routeName),
-                  ),
-                );
-              }
-            }
-          }
-        }
+        updatedCount = await importCatalogData(db, data);
       }
     } catch (_) {}
 
-    // 2. Descargar todos los relevamientos realizados en Lanús Digital por otros usuarios
+    // 3. Descargar relevamientos adicionales realizados en Lanús Digital por otros usuarios
     await fetchBitacoraGpsSurveys(db);
-    await db.cleanupAndMergeDuplicateLines();
 
     final totalActiveLines = await (db.select(db.lines)..where((l) => l.active.equals(true))).get();
     return updatedCount > 0 ? updatedCount : totalActiveLines.length;

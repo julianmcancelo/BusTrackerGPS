@@ -5,9 +5,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:bitacora_gps/database/database.dart';
 import 'package:bitacora_gps/core/utils/geo_utils.dart';
 import 'package:bitacora_gps/core/utils/kalman_filter.dart';
+import 'package:bitacora_gps/core/utils/transport_utils.dart';
+import 'package:bitacora_gps/core/services/sync_service.dart';
 import 'package:bitacora_gps/features/export/data/export_service.dart';
 import 'package:bitacora_gps/features/trips/data/trips_repository.dart';
 import 'package:bitacora_gps/features/capture/data/gps_repository.dart';
+import 'package:bitacora_gps/features/public_transit/data/transit_repository.dart';
+import 'package:bitacora_gps/features/transport/data/transport_repository.dart';
 
 void main() {
   group('GeoUtils Tests', () {
@@ -213,6 +217,86 @@ void main() {
         incidents: incidents,
       );
       expect(csvMap.containsKey('track_points.csv'), isTrue);
+    });
+
+    test('Lanus Digital Catalog import and Transit Network isolation', () async {
+      await db.seedInitialTransportData();
+
+      // Sample mock data representing Lanus Digital API lines (municipal 520 and non-municipal 9)
+      final sampleLanusDigitalData = [
+        {
+          'numero': '9',
+          'nombre': 'Línea 9 (General Tomás Guido)',
+          'subcategoria': 'Ramal 1',
+          'sentido': 'IDA',
+          'datosGeo': {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                [-58.3745, -34.5854],
+                [-58.3734, -34.5860],
+                [-58.4250, -34.6926],
+              ]
+            }
+          }
+        },
+        {
+          'numero': '9',
+          'nombre': 'Línea 9 (General Tomás Guido)',
+          'subcategoria': 'Ramal 1',
+          'sentido': 'VUELTA',
+          'datosGeo': {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                [-58.4250, -34.6926],
+                [-58.3734, -34.5860],
+                [-58.3745, -34.5854],
+              ]
+            }
+          }
+        },
+        {
+          'numero': '520',
+          'nombre': 'Línea 520 (Micro Ómnibus Lanús)',
+          'subcategoria': 'Ramal B',
+          'sentido': 'IDA',
+          'datosGeo': {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                [-58.3920, -34.7050],
+                [-58.3890, -34.7080],
+                [-58.3810, -34.7160],
+              ]
+            }
+          }
+        },
+      ];
+
+      final imported = await SyncService.importCatalogData(db, sampleLanusDigitalData);
+      expect(imported, greaterThan(0));
+
+      final transitRepo = TransitRepository(db);
+      final transitNetwork = await transitRepo.getTransitNetwork();
+
+      // In Public Transit, BOTH lines (9 and 520) must be present because they have valid routes
+      expect(transitNetwork.any((l) => l.number == '9'), isTrue);
+      expect(transitNetwork.any((l) => l.number == '520'), isTrue);
+
+      final line9 = transitNetwork.firstWhere((l) => l.number == '9');
+      expect(line9.hasRoutes, isTrue);
+      expect(line9.primaryBranch?.idaPoints.length, 3);
+      expect(line9.primaryBranch?.vueltaPoints.length, 3);
+
+      // In TransportRepository (Inspector Field Survey), ONLY municipal line 520 must appear, NOT Line 9
+      final transportRepo = TransportRepository(db);
+      final fieldSurveyLines = await transportRepo.getAllLines();
+      expect(fieldSurveyLines.any((l) => l.number == '520'), isTrue);
+      expect(fieldSurveyLines.any((l) => l.number == '9'), isFalse);
     });
   });
 }

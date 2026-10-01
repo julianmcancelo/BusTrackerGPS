@@ -50,14 +50,23 @@ class TransitRepository {
         for (final r in refRoutes) {
           final dir = r.direction.toUpperCase();
           final pts = GeoUtils.parseGeoJsonCoordinates(r.geoJsonData);
+          if (pts.isEmpty) continue;
           final meters = GeoUtils.calculatePolylineDistanceMeters(pts);
           final km = meters / 1000.0;
 
-          if (dir == 'IDA' && idaRoute == null) {
+          if (dir.contains('IDA') && idaRoute == null) {
             idaRoute = r;
             idaPoints = pts;
             idaKm = km;
-          } else if (dir == 'VUELTA' && vueltaRoute == null) {
+          } else if (dir.contains('VUELTA') && vueltaRoute == null) {
+            vueltaRoute = r;
+            vueltaPoints = pts;
+            vueltaKm = km;
+          } else if (idaRoute == null) {
+            idaRoute = r;
+            idaPoints = pts;
+            idaKm = km;
+          } else if (vueltaRoute == null) {
             vueltaRoute = r;
             vueltaPoints = pts;
             vueltaKm = km;
