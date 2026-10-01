@@ -7,15 +7,29 @@ import 'package:flutter_map/flutter_map.dart';
 import 'cartographic_projection.dart';
 
 enum MapboxStyle {
-  lightArchitectural,
-  streetsColor;
+  streetsColor,
+  outdoors,
+  lightArchitectural;
 
   String get label {
     switch (this) {
-      case MapboxStyle.lightArchitectural:
-        return 'Plano Arquitectónico (Mapbox Light)';
       case MapboxStyle.streetsColor:
-        return 'Callejero Urbano (Mapbox Streets)';
+        return 'Callejero Urbano Completo (Calles y Avenidas)';
+      case MapboxStyle.outdoors:
+        return 'Callejero Topográfico y Parques';
+      case MapboxStyle.lightArchitectural:
+        return 'Plano Técnico Claro (Estilo Arquitectura)';
+    }
+  }
+
+  String get mapboxStyleId {
+    switch (this) {
+      case MapboxStyle.streetsColor:
+        return 'streets-v12';
+      case MapboxStyle.outdoors:
+        return 'outdoors-v12';
+      case MapboxStyle.lightArchitectural:
+        return 'light-v11';
     }
   }
 }
@@ -30,16 +44,31 @@ class MapTileComposer {
   static const String _mapboxStreetsTemplate =
       'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken';
 
+  static const String _mapboxOutdoorsTemplate =
+      'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken';
+
   static const String _cartoFallbackTemplate =
       'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
 
-  /// Descarga y compone un mapa base Mapbox de alta resolución con alineación isométrica Web Mercator.
+  /// Descarga y compone un mapa base Mapbox de alta resolución con calles, avenidas y rotulación nítida.
   static Future<Uint8List?> composeBasemap({
     required LatLngBounds bounds,
     required int targetWidthPx,
     required int targetHeightPx,
-    MapboxStyle style = MapboxStyle.lightArchitectural,
+    MapboxStyle style = MapboxStyle.streetsColor,
   }) async {
+    // 1. Motor Primario: Mapbox Static Images API (Un solo request de alta definición con todas las calles)
+    final staticImageBytes = await _fetchMapboxStaticImage(
+      bounds: bounds,
+      targetWidthPx: targetWidthPx,
+      targetHeightPx: targetHeightPx,
+      style: style,
+    );
+    if (staticImageBytes != null && staticImageBytes.length > 5000) {
+      return staticImageBytes;
+    }
+
+    // 2. Motor Secundario: Descarga y ensamblaje de teselas ráster con fallback
     try {
       final projection = MercatorViewportProjection(
         bounds: bounds,
@@ -177,6 +206,50 @@ class MapTileComposer {
     final clampedLat = lat.clamp(-85.05112878, 85.05112878);
     final latRad = clampedLat * math.pi / 180.0;
     return ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * (1 << z)).floor();
+  }
+
+  /// Descarga directamente desde Mapbox Static Images API el encuadre exacto con calles y rotulación nítida
+  static Future<Uint8List?> _fetchMapboxStaticImage({
+    required LatLngBounds bounds,
+    required int targetWidthPx,
+    required int targetHeightPx,
+    required MapboxStyle style,
+  }) async {
+    try {
+      final styleId = style.mapboxStyleId;
+      const maxDim = 1280.0;
+      double w = targetWidthPx.toDouble();
+      double h = targetHeightPx.toDouble();
+      final aspect = w / h;
+      if (w > maxDim || h > maxDim) {
+        if (aspect >= 1.0) {
+          w = maxDim;
+          h = maxDim / aspect;
+        } else {
+          h = maxDim;
+          w = maxDim * aspect;
+        }
+      }
+      final int imgW = w.round().clamp(100, 1280);
+      final int imgH = h.round().clamp(100, 1280);
+
+      final minLon = bounds.west.toStringAsFixed(6);
+      final minLat = bounds.south.toStringAsFixed(6);
+      final maxLon = bounds.east.toStringAsFixed(6);
+      final maxLat = bounds.north.toStringAsFixed(6);
+
+      final url = 'https://api.mapbox.com/styles/v1/mapbox/$styleId/static/[$minLon,$minLat,$maxLon,$maxLat]/${imgW}x${imgH}@2x?access_token=$mapboxAccessToken';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'LanusDigitalCartografia/1.0'},
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200 && response.bodyBytes.length > 5000) {
+        return response.bodyBytes;
+      }
+    } catch (_) {}
+    return null;
   }
 }
 

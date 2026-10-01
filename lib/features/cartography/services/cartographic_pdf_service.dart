@@ -117,7 +117,7 @@ class CartographicPdfService {
     CartographicSheetFormat format = CartographicSheetFormat.a3,
     bool isLandscape = true,
     bool includeBasemap = true,
-    MapboxStyle mapboxStyle = MapboxStyle.lightArchitectural,
+    MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
   }) async {
     final pdf = pw.Document();
     final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
@@ -829,7 +829,7 @@ class CartographicPdfService {
     CartographicSheetFormat format = CartographicSheetFormat.a3,
     bool isLandscape = true,
     bool includeBasemap = true,
-    MapboxStyle mapboxStyle = MapboxStyle.lightArchitectural,
+    MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
   }) async {
     final bytes = await generateSheetBytes(
       data: data,

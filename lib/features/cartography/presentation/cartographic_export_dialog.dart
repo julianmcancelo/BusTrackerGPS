@@ -25,7 +25,7 @@ class CartographicExportDialog extends StatefulWidget {
 
 class _CartographicExportDialogState extends State<CartographicExportDialog> {
   CartographicSheetFormat _selectedFormat = CartographicSheetFormat.a3;
-  MapboxStyle _selectedMapboxStyle = MapboxStyle.lightArchitectural;
+  MapboxStyle _selectedMapboxStyle = MapboxStyle.streetsColor;
   bool _isLandscape = true;
   bool _includeBasemap = true;
   bool _isExporting = false;
@@ -200,12 +200,16 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                           ),
                           items: const [
                             DropdownMenuItem(
-                              value: MapboxStyle.lightArchitectural,
-                              child: Text('Mapbox Light (Arquitectónico)', style: TextStyle(fontSize: 12)),
+                              value: MapboxStyle.streetsColor,
+                              child: Text('Mapbox Streets (Callejero Completo con Calles)', style: TextStyle(fontSize: 12)),
                             ),
                             DropdownMenuItem(
-                              value: MapboxStyle.streetsColor,
-                              child: Text('Mapbox Streets (Callejero Color)', style: TextStyle(fontSize: 12)),
+                              value: MapboxStyle.outdoors,
+                              child: Text('Mapbox Outdoors (Calles y Topografía)', style: TextStyle(fontSize: 12)),
+                            ),
+                            DropdownMenuItem(
+                              value: MapboxStyle.lightArchitectural,
+                              child: Text('Mapbox Light (Plano Blanco y Gris)', style: TextStyle(fontSize: 12)),
                             ),
                           ],
                           onChanged: (val) {
