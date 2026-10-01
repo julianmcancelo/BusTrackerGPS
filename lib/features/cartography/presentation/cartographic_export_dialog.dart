@@ -136,7 +136,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Sentido ${data.direction} · ${data.distanceKm.toStringAsFixed(2)} km · ${data.polylinePoints.length} puntos WGS-84',
+                            data.hasIda && data.hasVuelta
+                                ? 'Ida: ${data.idaDistanceKm?.toStringAsFixed(1) ?? "-"} km (continua) · Vuelta: ${data.vueltaDistanceKm?.toStringAsFixed(1) ?? "-"} km (discontinua)'
+                                : 'Sentido ${data.direction} · ${data.distanceKm.toStringAsFixed(2)} km · ${data.allPoints.length} puntos WGS-84',
                             style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
                           ),
                         ],

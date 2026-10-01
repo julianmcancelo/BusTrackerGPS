@@ -65,8 +65,12 @@ class CartographicRouteData {
   final String branchName;
   final String direction;
   final List<LatLng> polylinePoints;
+  final List<LatLng> idaPoints;
+  final List<LatLng> vueltaPoints;
   final List<LatLng> stopPoints;
   final double distanceKm;
+  final double? idaDistanceKm;
+  final double? vueltaDistanceKm;
   final String? inspectorName;
   final String? internalNumber;
   final String? domain;
@@ -78,15 +82,48 @@ class CartographicRouteData {
     required this.lineName,
     required this.branchName,
     required this.direction,
-    required this.polylinePoints,
+    this.polylinePoints = const [],
+    this.idaPoints = const [],
+    this.vueltaPoints = const [],
     this.stopPoints = const [],
     required this.distanceKm,
+    this.idaDistanceKm,
+    this.vueltaDistanceKm,
     this.inspectorName,
     this.internalNumber,
     this.domain,
     required this.date,
     this.routeNotes,
   });
+
+  List<LatLng> get effectiveIdaPoints {
+    if (direction.trim().toUpperCase() == 'VUELTA') return const [];
+    if (idaPoints.isNotEmpty) return idaPoints;
+    if (direction.trim().toUpperCase() == 'IDA' ||
+        direction.trim().toUpperCase().contains('AMBOS') ||
+        direction.trim().toUpperCase().contains('TODO')) {
+      return polylinePoints;
+    }
+    return polylinePoints;
+  }
+
+  List<LatLng> get effectiveVueltaPoints {
+    if (direction.trim().toUpperCase() == 'IDA') return const [];
+    if (vueltaPoints.isNotEmpty) return vueltaPoints;
+    if (direction.trim().toUpperCase() == 'VUELTA') return polylinePoints;
+    return const [];
+  }
+
+  List<LatLng> get allPoints {
+    final list = <LatLng>[];
+    list.addAll(effectiveIdaPoints);
+    list.addAll(effectiveVueltaPoints);
+    if (list.isEmpty) list.addAll(polylinePoints);
+    return list;
+  }
+
+  bool get hasIda => effectiveIdaPoints.isNotEmpty;
+  bool get hasVuelta => effectiveVueltaPoints.isNotEmpty;
 }
 
 class CartographicPdfService {
@@ -122,8 +159,8 @@ class CartographicPdfService {
     final pdf = pw.Document();
     final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
 
-    final points = data.polylinePoints;
-    final bounds = _calculateSafeBounds(points);
+    final allRoutePoints = data.allPoints;
+    final bounds = _calculateSafeBounds(allRoutePoints);
 
     final pageWidth = pageFormat.width;
     final pageHeight = pageFormat.height;
@@ -149,7 +186,7 @@ class CartographicPdfService {
 
     // Descarga de mosaico Mapbox (@2x Retina)
     Uint8List? basemapBytes;
-    if (includeBasemap && points.isNotEmpty) {
+    if (includeBasemap && allRoutePoints.isNotEmpty) {
       basemapBytes = await MapTileComposer.composeBasemap(
         bounds: bounds,
         targetWidthPx: (mapWidth * 2.0).toInt(),
@@ -162,6 +199,11 @@ class CartographicPdfService {
 
     final lineColorHex = TransportUtils.getLineColor(data.lineNumber).toARGB32();
     final linePdfColor = PdfColor.fromInt(lineColorHex);
+    // VUELTA contrasta en color y en trama discontinua con espacios
+    final isReddish = (linePdfColor.red > 0.65 && linePdfColor.green < 0.45);
+    final vueltaPdfColor = isReddish
+        ? const PdfColor(0.12, 0.45, 0.88)
+        : const PdfColor(0.92, 0.40, 0.08);
 
     pdf.addPage(
       pw.Page(
@@ -209,13 +251,13 @@ class CartographicPdfService {
                               child: _buildArchitecturalCrosshairs(),
                             ),
 
-                            // Trazado Vectorial de Alta Definición Proyectado con Web Mercator
+                            // Trazado Vectorial Oficial: IDA (continua) y VUELTA (con espacios)
                             pw.Positioned.fill(
                               child: _buildVectorPolyline(
-                                points: points,
-                                stops: data.stopPoints,
+                                data: data,
                                 projection: projection,
-                                lineColor: linePdfColor,
+                                idaColor: linePdfColor,
+                                vueltaColor: vueltaPdfColor,
                               ),
                             ),
 
@@ -237,8 +279,8 @@ class CartographicPdfService {
                       ),
                     ),
 
-                    // 3. Carátula de Plano de Urbanismo y Firmas
-                    _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor),
+                    // 3. Carátula de Plano con Cuadro de Referencias Cartográficas Oficiales
+                    _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor, vueltaPdfColor),
                   ],
                 ),
               ),
@@ -434,40 +476,77 @@ class CartographicPdfService {
     );
   }
 
-  /// Traza vectorial exacta proyectada mediante Web Mercator isométrica
+  /// Traza vectorial exacta proyectada mediante Web Mercator isométrica:
+  /// - IDA: línea continua sólida.
+  /// - VUELTA: línea discontinua con espacios.
   static pw.Widget _buildVectorPolyline({
-    required List<LatLng> points,
-    required List<LatLng> stops,
+    required CartographicRouteData data,
     required MercatorViewportProjection projection,
-    required PdfColor lineColor,
+    required PdfColor idaColor,
+    required PdfColor vueltaColor,
   }) {
-    if (points.isEmpty) return pw.SizedBox();
+    final idaPoints = data.effectiveIdaPoints;
+    final vueltaPoints = data.effectiveVueltaPoints;
+    final stops = data.stopPoints;
+
+    if (idaPoints.isEmpty && vueltaPoints.isEmpty) return pw.SizedBox();
 
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
-        // 1. Halo blanco de contraste
-        canvas.setStrokeColor(PdfColors.white);
-        canvas.setLineWidth(5.5);
-        final firstPt = projection.projectToPdf(points.first);
-        canvas.moveTo(firstPt.x, firstPt.y);
-        for (int i = 1; i < points.length; i++) {
-          final pt = projection.projectToPdf(points[i]);
-          canvas.lineTo(pt.x, pt.y);
-        }
-        canvas.strokePath();
+        // 1. RECORRIDO VUELTA (Línea con espacios / discontinua)
+        if (vueltaPoints.isNotEmpty) {
+          // 1a. Halo blanco de contraste con patrón discontinuo
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(5.5);
+          canvas.setLineDashPattern(const [7, 4], 0);
+          final firstV = projection.projectToPdf(vueltaPoints.first);
+          canvas.moveTo(firstV.x, firstV.y);
+          for (int i = 1; i < vueltaPoints.length; i++) {
+            final pt = projection.projectToPdf(vueltaPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
 
-        // 2. Traza oficial
-        canvas.setStrokeColor(lineColor);
-        canvas.setLineWidth(3.2);
-        canvas.moveTo(firstPt.x, firstPt.y);
-        for (int i = 1; i < points.length; i++) {
-          final pt = projection.projectToPdf(points[i]);
-          canvas.lineTo(pt.x, pt.y);
+          // 1b. Traza oficial de VUELTA con espacios
+          canvas.setStrokeColor(vueltaColor);
+          canvas.setLineWidth(3.2);
+          canvas.setLineDashPattern(const [7, 4], 0);
+          canvas.moveTo(firstV.x, firstV.y);
+          for (int i = 1; i < vueltaPoints.length; i++) {
+            final pt = projection.projectToPdf(vueltaPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+          canvas.setLineDashPattern(); // Restaurar trazo continuo
         }
-        canvas.strokePath();
 
-        // 3. Paradas intermedias
-        canvas.setFillColor(lineColor);
+        // 2. RECORRIDO IDA (Línea continua)
+        if (idaPoints.isNotEmpty) {
+          // 2a. Halo blanco continuo
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(5.5);
+          canvas.setLineDashPattern();
+          final firstI = projection.projectToPdf(idaPoints.first);
+          canvas.moveTo(firstI.x, firstI.y);
+          for (int i = 1; i < idaPoints.length; i++) {
+            final pt = projection.projectToPdf(idaPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+
+          // 2b. Traza oficial de IDA continua
+          canvas.setStrokeColor(idaColor);
+          canvas.setLineWidth(3.2);
+          canvas.moveTo(firstI.x, firstI.y);
+          for (int i = 1; i < idaPoints.length; i++) {
+            final pt = projection.projectToPdf(idaPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+        }
+
+        // 3. Paradas intermedias registradas
+        canvas.setFillColor(idaColor);
         canvas.setStrokeColor(PdfColors.white);
         canvas.setLineWidth(1.2);
         for (final stop in stops) {
@@ -478,24 +557,35 @@ class CartographicPdfService {
           canvas.strokePath();
         }
 
-        // 4. Cabecera Inicial (Verde)
-        canvas.setFillColor(const PdfColor(0.1, 0.65, 0.2));
-        canvas.setStrokeColor(PdfColors.white);
-        canvas.setLineWidth(2.0);
-        canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
-        canvas.fillPath();
-        canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
-        canvas.strokePath();
+        // 4. Cabecera Inicial / Origen (Círculo Verde esmeralda)
+        final originPoint = idaPoints.isNotEmpty
+            ? idaPoints.first
+            : (vueltaPoints.isNotEmpty ? vueltaPoints.first : null);
+        if (originPoint != null) {
+          final firstPt = projection.projectToPdf(originPoint);
+          canvas.setFillColor(const PdfColor(0.1, 0.65, 0.2));
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(2.0);
+          canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
+          canvas.fillPath();
+          canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
+          canvas.strokePath();
+        }
 
-        // 5. Terminal de Destino (Granate)
-        final lastPt = projection.projectToPdf(points.last);
-        canvas.setFillColor(granateLanus);
-        canvas.setStrokeColor(PdfColors.white);
-        canvas.setLineWidth(2.0);
-        canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
-        canvas.fillPath();
-        canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
-        canvas.strokePath();
+        // 5. Cabecera Final / Terminal de Destino (Círculo Granate Lanús)
+        final destPoint = idaPoints.isNotEmpty
+            ? idaPoints.last
+            : (vueltaPoints.isNotEmpty ? vueltaPoints.last : null);
+        if (destPoint != null) {
+          final lastPt = projection.projectToPdf(destPoint);
+          canvas.setFillColor(granateLanus);
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(2.0);
+          canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
+          canvas.fillPath();
+          canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
+          canvas.strokePath();
+        }
       },
     );
   }
@@ -610,12 +700,13 @@ class CartographicPdfService {
     );
   }
 
-  /// Carátula de Plano de Arquitectura y Urbanismo (Title Block)
+  /// Carátula de Plano de Arquitectura y Urbanismo (Title Block) con Cuadro de Referencias Oficiales
   static pw.Widget _buildArchitecturalCarature(
     CartographicRouteData data,
     CartographicSheetFormat format,
     double height,
-    PdfColor lineColor,
+    PdfColor idaColor,
+    PdfColor vueltaColor,
   ) {
     final isLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
     final fontSizeTitle = isLarge ? 15.0 : 10.0;
@@ -634,7 +725,7 @@ class CartographicPdfService {
           pw.Expanded(
             flex: 4,
             child: pw.Container(
-              padding: const pw.EdgeInsets.all(7),
+              padding: const pw.EdgeInsets.all(6),
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
               ),
@@ -657,7 +748,7 @@ class CartographicPdfService {
                         width: isLarge ? 48 : 34,
                         height: isLarge ? 48 : 34,
                         decoration: pw.BoxDecoration(
-                          color: lineColor,
+                          color: idaColor,
                           shape: pw.BoxShape.circle,
                         ),
                         child: pw.Center(
@@ -703,7 +794,7 @@ class CartographicPdfService {
           pw.Expanded(
             flex: 3,
             child: pw.Container(
-              padding: const pw.EdgeInsets.all(7),
+              padding: const pw.EdgeInsets.all(6),
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
               ),
@@ -711,9 +802,15 @@ class CartographicPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildMetricRow('Longitud Total:', '${data.distanceKm.toStringAsFixed(2)} km', fontSizeVal),
+                  if (data.hasIda && data.hasVuelta && data.idaDistanceKm != null) ...[
+                    _buildMetricRow('Traza Ida:', '${data.idaDistanceKm!.toStringAsFixed(1)} km', fontSizeVal),
+                    _buildMetricRow('Traza Vuelta:', '${(data.vueltaDistanceKm ?? 0).toStringAsFixed(1)} km', fontSizeVal),
+                    _buildMetricRow('Distancia Total:', '${data.distanceKm.toStringAsFixed(1)} km', fontSizeVal),
+                  ] else ...[
+                    _buildMetricRow('Longitud Total:', '${data.distanceKm.toStringAsFixed(2)} km', fontSizeVal),
+                    _buildMetricRow('Puntos GPS:', '${data.allPoints.length}', fontSizeVal),
+                  ],
                   _buildMetricRow('Paradas Registradas:', '${data.stopPoints.length}', fontSizeVal),
-                  _buildMetricRow('Puntos GPS WGS-84:', '${data.polylinePoints.length}', fontSizeVal),
                   _buildMetricRow('Fecha de Emisión:', DateFormat('dd/MM/yyyy HH:mm').format(data.date), fontSizeVal),
                 ],
               ),
@@ -721,7 +818,7 @@ class CartographicPdfService {
           ),
           pw.SizedBox(width: 6),
 
-          // 3. Cuadro de Firmas Técnicas y Aprobación
+          // 3. Cuadro de Referencias Cartográficas Oficiales
           pw.Expanded(
             flex: 4,
             child: pw.Container(
@@ -729,13 +826,58 @@ class CartographicPdfService {
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
               ),
-              child: pw.Row(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildSignatureBox('RELEVÓ', data.inspectorName ?? 'Inspector Técnico', fontSizeVal),
-                  pw.SizedBox(width: 3),
-                  _buildSignatureBox('REVISÓ', 'Dpto. de Movilidad', fontSizeVal),
-                  pw.SizedBox(width: 3),
-                  _buildSignatureBox('APROBÓ', 'Subsecretaría Planificación', fontSizeVal),
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                    decoration: const pw.BoxDecoration(
+                      color: azulArquitectura,
+                    ),
+                    child: pw.Text(
+                      'REFERENCIAS CARTOGRÁFICAS',
+                      style: pw.TextStyle(
+                        fontSize: fontSizeVal * 0.82,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                        letterSpacing: 0.6,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                  ),
+                  _buildLegendRow(
+                    swatch: _buildLineSwatch(color: idaColor, isDashed: false),
+                    label: 'Recorrido IDA (Traza Continua)',
+                    distText: data.idaDistanceKm != null && data.idaDistanceKm! > 0
+                        ? '${data.idaDistanceKm!.toStringAsFixed(1)} km'
+                        : null,
+                    fontSize: fontSizeVal,
+                  ),
+                  _buildLegendRow(
+                    swatch: _buildLineSwatch(color: vueltaColor, isDashed: true),
+                    label: 'Recorrido VUELTA (Traza Discontinua)',
+                    distText: data.vueltaDistanceKm != null && data.vueltaDistanceKm! > 0
+                        ? '${data.vueltaDistanceKm!.toStringAsFixed(1)} km'
+                        : null,
+                    fontSize: fontSizeVal,
+                  ),
+                  _buildLegendRow(
+                    swatch: _buildDotSwatch(color: const PdfColor(0.1, 0.65, 0.2)),
+                    label: 'Cabecera Inicial / Origen',
+                    fontSize: fontSizeVal,
+                  ),
+                  _buildLegendRow(
+                    swatch: _buildDotSwatch(color: granateLanus),
+                    label: 'Cabecera Final / Destino',
+                    fontSize: fontSizeVal,
+                  ),
+                  _buildLegendRow(
+                    swatch: _buildStopSwatch(color: idaColor),
+                    label: 'Paradas Oficiales (${data.stopPoints.length})',
+                    fontSize: fontSizeVal,
+                  ),
                 ],
               ),
             ),
@@ -755,38 +897,96 @@ class CartographicPdfService {
     );
   }
 
-  static pw.Widget _buildSignatureBox(String role, String entity, double fontSize) {
-    return pw.Expanded(
-      child: pw.Container(
-        padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 2),
-        decoration: pw.BoxDecoration(
-          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+  static pw.Widget _buildLegendRow({
+    required pw.Widget swatch,
+    required String label,
+    String? distText,
+    required double fontSize,
+  }) {
+    return pw.Row(
+      children: [
+        pw.Container(
+          width: 26,
+          height: 9,
+          alignment: pw.Alignment.center,
+          child: swatch,
         ),
-        child: pw.Column(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(
-              role,
-              style: pw.TextStyle(fontSize: fontSize * 0.72, fontWeight: pw.FontWeight.bold, color: granateLanus),
+        pw.SizedBox(width: 5),
+        pw.Expanded(
+          child: pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: fontSize * 0.78,
+              fontWeight: pw.FontWeight.bold,
+              color: azulArquitectura,
             ),
-            pw.Container(
-              height: 18,
-              alignment: pw.Alignment.bottomCenter,
-              child: pw.Container(
-                height: 0.5,
-                color: PdfColors.grey400,
-                margin: const pw.EdgeInsets.symmetric(horizontal: 2),
-              ),
-            ),
-            pw.Text(
-              entity,
-              style: pw.TextStyle(fontSize: fontSize * 0.62, color: PdfColors.grey600),
-              textAlign: pw.TextAlign.center,
-              maxLines: 1,
-            ),
-          ],
+            maxLines: 1,
+          ),
         ),
-      ),
+        if (distText != null && distText.isNotEmpty) ...[
+          pw.SizedBox(width: 4),
+          pw.Text(
+            distText,
+            style: pw.TextStyle(
+              fontSize: fontSize * 0.78,
+              fontWeight: pw.FontWeight.bold,
+              color: granateLanus,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static pw.Widget _buildLineSwatch({
+    required PdfColor color,
+    required bool isDashed,
+  }) {
+    return pw.CustomPaint(
+      size: const PdfPoint(26, 9),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        canvas.setStrokeColor(color);
+        canvas.setLineWidth(2.8);
+        if (isDashed) {
+          canvas.setLineDashPattern(const [5, 3], 0);
+        } else {
+          canvas.setLineDashPattern();
+        }
+        canvas.moveTo(0, size.y / 2);
+        canvas.lineTo(size.x, size.y / 2);
+        canvas.strokePath();
+        if (isDashed) canvas.setLineDashPattern();
+      },
+    );
+  }
+
+  static pw.Widget _buildDotSwatch({required PdfColor color}) {
+    return pw.CustomPaint(
+      size: const PdfPoint(26, 9),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        canvas.setFillColor(color);
+        canvas.setStrokeColor(PdfColors.white);
+        canvas.setLineWidth(1.2);
+        canvas.drawEllipse(size.x / 2, size.y / 2, 4.0, 4.0);
+        canvas.fillPath();
+        canvas.drawEllipse(size.x / 2, size.y / 2, 4.0, 4.0);
+        canvas.strokePath();
+      },
+    );
+  }
+
+  static pw.Widget _buildStopSwatch({required PdfColor color}) {
+    return pw.CustomPaint(
+      size: const PdfPoint(26, 9),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        canvas.setFillColor(color);
+        canvas.setStrokeColor(PdfColors.white);
+        canvas.setLineWidth(0.8);
+        canvas.drawEllipse(size.x / 2, size.y / 2, 2.8, 2.8);
+        canvas.fillPath();
+        canvas.drawEllipse(size.x / 2, size.y / 2, 2.8, 2.8);
+        canvas.strokePath();
+      },
     );
   }
 
