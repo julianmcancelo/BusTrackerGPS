@@ -34,23 +34,37 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
   }
 
   void _fitLineCamera(TransitLineSummary? line, TransitBranchSummary? branch) {
-    if (line == null || branch == null) {
-      _mapController.move(_lanusCenter, 13.0);
+    if (line == null) {
       return;
     }
 
     final points = <LatLng>[];
     final dir = ref.read(transitControllerProvider).directionFilter;
 
-    if (dir == TransitDirectionFilter.ida || dir == TransitDirectionFilter.both) {
-      points.addAll(branch.idaPoints);
+    final targetBranch = branch ?? line.primaryBranch;
+    if (targetBranch != null) {
+      if (dir == TransitDirectionFilter.ida || dir == TransitDirectionFilter.both) {
+        points.addAll(targetBranch.idaPoints);
+      }
+      if (dir == TransitDirectionFilter.vuelta || dir == TransitDirectionFilter.both) {
+        points.addAll(targetBranch.vueltaPoints);
+      }
+      // If empty for current direction, fallback to any point in the branch
+      if (points.isEmpty) {
+        points.addAll(targetBranch.idaPoints);
+        points.addAll(targetBranch.vueltaPoints);
+      }
     }
-    if (dir == TransitDirectionFilter.vuelta || dir == TransitDirectionFilter.both) {
-      points.addAll(branch.vueltaPoints);
+
+    // If still empty, collect points from all available branches in the line
+    if (points.isEmpty) {
+      for (final b in line.branches) {
+        points.addAll(b.idaPoints);
+        points.addAll(b.vueltaPoints);
+      }
     }
 
     if (points.isEmpty) {
-      _mapController.move(_lanusCenter, 13.0);
       return;
     }
 

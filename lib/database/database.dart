@@ -81,58 +81,60 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> seedInitialTransportData() async {
     final defaultLines = [
-      {'number': '9', 'name': 'Línea 9 (Gral. Tomás Guido)', 'branches': [{'name': 'Ramal 1', 'desc': 'Retiro - Villa Caraza'}, {'name': 'Ramal 2', 'desc': 'Retiro - Villa Caraza'}, {'name': 'Ramal Expreso', 'desc': 'Retiro - Villa Caraza'}]},
-      {'number': '10', 'name': 'Línea 10 (Línea 10 S.A.)', 'branches': [{'name': 'Principal', 'desc': 'Palermo - Wilde (por Est. Lanús)'}]},
-      {'number': '15', 'name': 'Línea 15 (Transportes Sur-Nor)', 'branches': [{'name': 'Principal', 'desc': 'Benavídez - Puente Uriburu'}, {'name': 'Semirápido', 'desc': 'Benavídez - Puente Uriburu'}]},
-      {'number': '20', 'name': 'Línea 20 (Micro Ómnibus Larrazábal)', 'branches': [{'name': 'Ramal 1', 'desc': 'Retiro - Lanús Oeste'}, {'name': 'Ramal 3', 'desc': 'Retiro - Lanús Oeste'}]},
-      {'number': '28', 'name': 'Línea 28 (DOTA)', 'branches': [{'name': 'Principal', 'desc': 'Retiro - Pte. La Noria - Liniers - C. Universitaria'}]},
-      {'number': '31', 'name': 'Línea 31 (Rocaraza S.A.)', 'branches': [{'name': 'Ramal Calle 11', 'desc': 'Plaza Miserere - Villa Caraza'}, {'name': 'Ramal Calle 21', 'desc': 'Plaza Miserere - Villa Caraza'}]},
-      {'number': '32', 'name': 'Línea 32 (El Puente S.A.T.)', 'branches': [{'name': 'Ramal P', 'desc': 'Once - Lanús / Monte Chingolo'}]},
-      {'number': '33', 'name': 'Línea 33 (Transportes San Roch)', 'branches': [{'name': 'Ramal Roja', 'desc': 'C. Universitaria - Remedios de Escalada'}, {'name': 'Ramal C', 'desc': 'C. Universitaria - Monte Chingolo'}, {'name': 'Ramal M', 'desc': 'Retiro - Remedios de Escalada'}]},
-      {'number': '37', 'name': 'Línea 37 (4 de Septiembre)', 'branches': [{'name': 'Ramal 1', 'desc': 'C. Universitaria - Lanús'}, {'name': 'Ramal 3', 'desc': 'C. Universitaria - Lanús por Congreso'}, {'name': 'Ramal 4', 'desc': 'Palermo - Lanús'}]},
-      {'number': '45', 'name': 'Línea 45 (Micro Ómnibus 45)', 'branches': [{'name': 'Principal', 'desc': 'C. Universitaria - Remedios de Escalada'}, {'name': 'Semirápido', 'desc': 'C. Universitaria - Remedios de Escalada por Autopista'}]},
-      {'number': '51', 'name': 'Línea 51 (Empresa San Vicente)', 'branches': [{'name': 'Principal', 'desc': 'Constitución - Cañuelas / Brandsen (por Lanús)'}]},
-      {'number': '54', 'name': 'Línea 54 (Autobuses Buenos Aires)', 'branches': [{'name': 'Principal', 'desc': 'Puente La Noria - Estación Lanús'}]},
-      {'number': '70', 'name': 'Línea 70 (Transportes 270)', 'branches': [{'name': 'Principal', 'desc': 'Retiro - Valentín Alsina'}]},
-      {'number': '74', 'name': 'Línea 74 (Empresa San Vicente)', 'branches': [{'name': 'Principal', 'desc': 'Correo Central - Burzaco (por Lanús)'}]},
-      {'number': '75', 'name': 'Línea 75 (El Puente S.A.T.)', 'branches': [{'name': 'Principal', 'desc': 'Retiro - Lanús Oeste'}]},
-      {'number': '79', 'name': 'Línea 79 (Empresa San Vicente)', 'branches': [{'name': 'Principal', 'desc': 'Constitución - San Vicente (por Lanús)'}]},
-      {'number': '85', 'name': 'Línea 85 (SAES)', 'branches': [{'name': 'Ramal A', 'desc': 'C. Universitaria - Balneario Quilmes'}, {'name': 'Ramal G', 'desc': 'C. Universitaria - Quilmes'}, {'name': 'Ramal I', 'desc': 'C. Universitaria - Bernal'}]},
-      {'number': '100', 'name': 'Línea 100 (TARSA)', 'branches': [{'name': 'Ramal 1', 'desc': 'Retiro - Lanús por Pavón'}, {'name': 'Ramal 3', 'desc': 'Retiro - Lanús por Güemes'}]},
-      {'number': '119', 'name': 'Línea 119 (Empresa San Vicente)', 'branches': [{'name': 'Principal', 'desc': 'Chacarita - Lanús'}]},
-      {'number': '128', 'name': 'Línea 128 (El Puente S.A.T.)', 'branches': [{'name': 'Principal', 'desc': 'Palermo - Valentín Alsina'}]},
-      {'number': '154', 'name': 'Línea 154 (Micro Ómnibus 45)', 'branches': [{'name': 'Principal', 'desc': 'Constitución - Lanús'}]},
-      {'number': '158', 'name': 'Línea 158 (El Puente S.A.T.)', 'branches': [{'name': 'Principal', 'desc': 'Nueva Pompeya - Lanús'}]},
-      {'number': '160', 'name': 'Línea 160 (Micro Ómnibus Sur)', 'branches': [{'name': 'Ramal A', 'desc': 'C. Universitaria - Claypole'}, {'name': 'Ramal G', 'desc': 'C. Universitaria - Ministro Rivadavia'}, {'name': 'Ramal R', 'desc': 'Palermo - Claypole'}]},
-      {'number': '164', 'name': 'Línea 164 (Gral. Tomás Guido)', 'branches': [{'name': 'Ramal A', 'desc': 'Plaza Miserere - Monte Grande'}, {'name': 'Ramal B', 'desc': 'Plaza Miserere - Burzaco'}, {'name': 'Ramal C', 'desc': 'Pompeya - Monte Grande'}]},
-      {'number': '177', 'name': 'Línea 177 (Empresa San Vicente)', 'branches': [{'name': 'Ramal 1', 'desc': 'Nueva Pompeya - Burzaco (por Lanús)'}]},
-      {'number': '178', 'name': 'Línea 178 (La Colorada)', 'branches': [{'name': 'Ramal B', 'desc': 'Nueva Pompeya - Florencio Varela'}, {'name': 'Ramal C Verde', 'desc': 'Nueva Pompeya - Zeballos'}, {'name': 'Ramal C Rojo', 'desc': 'Nueva Pompeya - Alpargatas'}, {'name': 'Ramal G', 'desc': 'Nueva Pompeya - Varela'}]},
-      {'number': '179', 'name': 'Línea 179 (El Trébol)', 'branches': [{'name': 'Ramal 1', 'desc': 'Nueva Pompeya - Fiorito - Lanús'}, {'name': 'Ramal 2', 'desc': 'Nueva Pompeya - Santa Marta - Lanús'}, {'name': 'Ramal 3', 'desc': 'Nueva Pompeya - San José - Lanús'}]},
-      {'number': '188', 'name': 'Línea 188 (Micro Ómnibus Larrazábal)', 'branches': [{'name': 'Ramal 1', 'desc': 'Plaza Italia - Cruce Lomas'}, {'name': 'Ramal 2', 'desc': 'Plaza Italia - Santa Catalina'}, {'name': 'Ramal 3', 'desc': 'Palermo - Villa Fiorito'}]},
-      {'number': '239', 'name': 'Línea 239 (Expreso Villa Galicia)', 'branches': [{'name': 'Ramal P', 'desc': 'Estación Lanús - Villa Galicia / Banfield'}]},
-      {'number': '247', 'name': 'Línea 247 (Expreso Nueve de Julio)', 'branches': [{'name': 'Ramal 2', 'desc': 'Villa Fiorito - San Francisco Solano'}, {'name': 'Ramal 5', 'desc': 'Puente Uriburu - Claypole'}, {'name': 'Ramal 7', 'desc': 'Lanús - Pasco'}]},
-      {'number': '263', 'name': 'Línea 263 (Empresa San Vicente)', 'branches': [{'name': 'Ramal M', 'desc': 'Estación Lanús - Burzaco'}, {'name': 'Ramal R', 'desc': 'Estación Lanús - Claypole'}]},
-      {'number': '266', 'name': 'Línea 266 (Expreso Villa Galicia)', 'branches': [{'name': 'Ramal 1', 'desc': 'Estación Lanús - Lomas de Zamora'}, {'name': 'Ramal 2', 'desc': 'Estación Lanús - San José'}]},
-      {'number': '271', 'name': 'Línea 271 (Compañía La Paz)', 'branches': [{'name': 'Principal', 'desc': 'Avellaneda - Burzaco (por Lanús)'}]},
-      {'number': '277', 'name': 'Línea 277 (Autobuses Buenos Aires)', 'branches': [{'name': 'Principal', 'desc': 'Avellaneda - Universidad de Lomas de Zamora (por Lanús)'}]},
-      {'number': '283', 'name': 'Línea 283 (Cía. Andrade)', 'branches': [{'name': 'Ramal B1', 'desc': 'Estación Lanús - Puente La Noria'}, {'name': 'Ramal B2', 'desc': 'Estación Lanús - Santa Catalina'}, {'name': 'Ramal B3', 'desc': 'Estación Lanús - Lomas de Zamora'}]},
-      {'number': '293', 'name': 'Línea 293 (Expreso El Triángulo)', 'branches': [{'name': 'Ramal B', 'desc': 'Avellaneda - San Francisco Solano (por Lanús)'}]},
-      {'number': '295', 'name': 'Línea 295 (Micro Ómnibus O\'Gorman)', 'branches': [{'name': 'Ramal 1', 'desc': 'Estación Lanús - Wilde'}, {'name': 'Ramal 2', 'desc': 'Estación Lanús - Avellaneda'}, {'name': 'Ramal 4', 'desc': 'Estación Lanús - Bernal'}, {'name': 'Ramal 5', 'desc': 'Estación Lanús - Crucecita'}]},
-      {'number': '299', 'name': 'Línea 299 (Expreso Villa Galicia)', 'branches': [{'name': 'Ramal C', 'desc': 'Estación Lanús - Banfield'}, {'name': 'Ramal M', 'desc': 'Estación Lanús - Monte Chingolo'}, {'name': 'Ramal SJ', 'desc': 'Estación Lanús - San José'}]},
-      {'number': '318', 'name': 'Línea 318 (Micro Ómnibus Mitre)', 'branches': [{'name': 'Ramal A', 'desc': 'Puente La Noria - Claypole (por Lanús)'}, {'name': 'Ramal B', 'desc': 'Puente La Noria - Adrogué'}, {'name': 'Ramal M', 'desc': 'Lanús - Llavallol'}]},
-      {'number': '323', 'name': 'Línea 323 (Expreso Villa Galicia)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - San José'}]},
-      {'number': '338', 'name': 'Línea 338 (TALP - Costera Criolla)', 'branches': [{'name': 'Ramal P', 'desc': 'La Plata - San Isidro (por Cruce Lomas / Lanús)'}]},
-      {'number': '373', 'name': 'Línea 373 (General Tomás Guido)', 'branches': [{'name': 'Ramal 1', 'desc': 'Isla Maciel - Wilde (por Lanús)'}, {'name': 'Ramal 2', 'desc': 'Isla Maciel - Avellaneda'}, {'name': 'Ramal 5', 'desc': 'Puente Pueyrredón - Lanús'}]},
-      {'number': '405', 'name': 'Línea 405 (Micro Ómnibus Larrazábal)', 'branches': [{'name': 'Principal', 'desc': 'Puente La Noria - Estación Lanús'}]},
-      {'number': '406', 'name': 'Línea 406 (Autobuses Buenos Aires)', 'branches': [{'name': 'Ramal LZ', 'desc': 'San Justo - Lomas de Zamora (por Lanús)'}, {'name': 'Ramal SJ', 'desc': 'Morón - Lanús'}]},
-      {'number': '436', 'name': 'Línea 436 (Expreso Villa Galicia)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - San José'}]},
-      {'number': '520', 'name': 'Línea 520 (MOASA - Lanús / Villa Caraza)', 'branches': [{'name': 'Ramal B', 'desc': 'Estación Lanús - Villa Caraza'}, {'name': 'Ramal B2', 'desc': 'Hospital Interzonal (Evita) - Villa Caraza'}, {'name': 'Ramal C', 'desc': 'Estación Lanús - Villa Caraza (por Barrio Eva Perón)'}]},
-      {'number': '521', 'name': 'Línea 521 (MOESA - Lanús / Villa Obrera)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - Villa Obrera (por Bv. Martín Rodríguez y Eva Perón)'}]},
-      {'number': '522', 'name': 'Línea 522 (El Urbano - Lanús / Monte Chingolo)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - Cnel. Lynch y Caaguazú (Monte Chingolo)'}]},
-      {'number': '523', 'name': 'Línea 523 (Cía. Andrade - Lanús / Escalada)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - Estación Remedios de Escalada'}]},
-      {'number': '524', 'name': 'Línea 524 (5 de Agosto - Lanús / Monte Chingolo)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - Charcas y Cno. Gral. Belgrano (por Centenario)'}]},
-      {'number': '526', 'name': 'Línea 526 (MOESA - Lanús / Villa Ofelia)', 'branches': [{'name': 'Principal', 'desc': 'Estación Lanús - Villa Ofelia (por H. Guidi, 9 de Julio y Kloosterman)'}]},
-      {'number': '527', 'name': 'Línea 527 (El Urbano - Lanús / Monte Chingolo)', 'branches': [{'name': 'Ramal B', 'desc': 'Estación Lanús - Cno. Gral. Belgrano y Av. Fabián Onsari'}, {'name': 'Ramal C', 'desc': 'Estación Lanús - Hospital Evita / Roma y Lynch'}, {'name': 'Ramal 522', 'desc': 'Estación Lanús - Estación Monte Chingolo - Cnel. Lynch'}]},
+      {
+        'number': '520',
+        'name': 'Línea 520 (MOASA - Lanús / Villa Caraza)',
+        'branches': [
+          {'name': 'Ramal B', 'desc': 'Estación Lanús - Villa Caraza'},
+          {'name': 'Ramal B2', 'desc': 'Hospital Interzonal (Evita) - Villa Caraza'},
+          {'name': 'Ramal C', 'desc': 'Estación Lanús - Villa Caraza (por Barrio Eva Perón)'},
+          {'name': 'Ramal D', 'desc': 'Ex Línea 529 (Conexiones Lanús Oeste)'},
+        ]
+      },
+      {
+        'number': '521',
+        'name': 'Línea 521 (MOESA - Lanús / Villa Obrera)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Villa Obrera (por Bv. Martín Rodríguez y Eva Perón)'},
+        ]
+      },
+      {
+        'number': '522',
+        'name': 'Línea 522 (El Urbano - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Cnel. Lynch y Caaguazú (Monte Chingolo)'},
+        ]
+      },
+      {
+        'number': '523',
+        'name': 'Línea 523 (Cía. Andrade - Lanús / Escalada)',
+        'branches': [
+          {'name': 'Principal (Unión Comunal)', 'desc': 'Estación Lanús - Estación Remedios de Escalada'},
+        ]
+      },
+      {
+        'number': '524',
+        'name': 'Línea 524 (5 de Agosto - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Charcas y Cno. Gral. Belgrano (por Centenario)'},
+        ]
+      },
+      {
+        'number': '526',
+        'name': 'Línea 526 (MOESA - Lanús / Villa Ofelia)',
+        'branches': [
+          {'name': 'Principal', 'desc': 'Estación Lanús - Villa Ofelia (por H. Guidi, 9 de Julio y Kloosterman)'},
+        ]
+      },
+      {
+        'number': '527',
+        'name': 'Línea 527 (El Urbano - Lanús / Monte Chingolo)',
+        'branches': [
+          {'name': 'Ramal B (Corina por Cadorna)', 'desc': 'Estación Lanús - Cno. Gral. Belgrano y Av. Fabián Onsari'},
+          {'name': 'Ramal C (Hospital Evita)', 'desc': 'Estación Lanús - Hospital Evita / Roma y Lynch'},
+          {'name': 'Ramal C (ex 522)', 'desc': 'Estación Lanús - Estación Monte Chingolo - Cnel. Lynch'},
+        ]
+      },
     ];
 
     for (final lineData in defaultLines) {
@@ -148,10 +150,14 @@ class AppDatabase extends _$AppDatabase {
           LinesCompanion.insert(
             number: number,
             name: name,
+            active: const Value(true),
           ),
         );
       } else {
         lineId = existing.id;
+        await (update(lines)..where((l) => l.id.equals(lineId))).write(
+          const LinesCompanion(active: Value(true)),
+        );
       }
 
       final existingBranches = await (select(branches)..where((t) => t.lineId.equals(lineId))).get();
@@ -170,6 +176,16 @@ class AppDatabase extends _$AppDatabase {
         }
       }
     }
+
+    // Desactiva para el relevamiento e inspección de campo todas las líneas no municipales
+    await (update(lines)..where((l) => l.number.isNotIn(TransportUtils.municipalLineNumbers.toList()))).write(
+      const LinesCompanion(active: Value(false)),
+    );
+
+    // Asegura que las 7 comunales municipales de Lanús queden activas
+    await (update(lines)..where((l) => l.number.isIn(TransportUtils.municipalLineNumbers.toList()))).write(
+      const LinesCompanion(active: Value(true)),
+    );
 
     // Unifica y limpia de raíz posibles duplicados existentes
     await cleanupAndMergeDuplicateLines();

@@ -224,17 +224,21 @@ class SyncService {
                   LinesCompanion.insert(
                     number: numero,
                     name: item['nombre'] ?? 'Línea $numero',
+                    active: Value(TransportUtils.isMunicipalLine(numero)),
                   ),
                 );
             updatedCount++;
           } else {
             lineId = existingLine.id;
-            // Update line name if it changed on the server
+            // Update line name if it changed on the server, and enforce active state
             final newName = item['nombre']?.toString() ?? 'Línea $numero';
+            await (db.update(db.lines)..where((l) => l.id.equals(lineId))).write(
+              LinesCompanion(
+                name: Value(newName),
+                active: Value(TransportUtils.isMunicipalLine(numero)),
+              ),
+            );
             if (existingLine.name != newName) {
-              await (db.update(db.lines)..where((l) => l.id.equals(lineId))).write(
-                LinesCompanion(name: Value(newName)),
-              );
               updatedCount++;
             }
           }
@@ -354,6 +358,7 @@ class SyncService {
                   LinesCompanion.insert(
                     number: lineaNumero,
                     name: 'Línea $lineaNumero',
+                    active: Value(TransportUtils.isMunicipalLine(lineaNumero)),
                   ),
                 );
           } else {

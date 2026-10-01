@@ -36,6 +36,25 @@ class TransportUtils {
     return a.compareTo(b);
   }
 
+  /// Lista oficial de las líneas comunales municipales de Lanús
+  static const Set<String> municipalLineNumbers = {
+    '520',
+    '521',
+    '522',
+    '523',
+    '524',
+    '526',
+    '527',
+  };
+
+  /// Determina si una línea es de jurisdicción municipal comunal de Lanús (serie 500)
+  static bool isMunicipalLine(String? lineNumber) {
+    final num = normalizeLineNumber(lineNumber);
+    if (municipalLineNumbers.contains(num)) return true;
+    final val = int.tryParse(num) ?? 0;
+    return val >= 500 && val <= 599;
+  }
+
   /// Retorna un color distintivo oficial según el número de línea de Lanús.
   static Color getLineColor(String? lineNumber) {
     final num = normalizeLineNumber(lineNumber);

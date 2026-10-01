@@ -24,7 +24,10 @@ class TransportRepository {
         .watch()
         .map((lines) {
       final seen = <String>{};
-      return lines.where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number))).toList();
+      return lines
+          .where((l) => TransportUtils.isMunicipalLine(l.number))
+          .where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number)))
+          .toList();
     });
   }
 
@@ -35,9 +38,12 @@ class TransportRepository {
           ..orderBy([(t) => OrderingTerm.asc(t.number)]))
         .get();
     
-    // Deduplicate strictly by canonical line number
+    // Deduplicate strictly by canonical line number and restrict to municipal
     final seen = <String>{};
-    return allLines.where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number))).toList();
+    return allLines
+        .where((l) => TransportUtils.isMunicipalLine(l.number))
+        .where((l) => seen.add(TransportUtils.normalizeLineNumber(l.number)))
+        .toList();
   }
 
   Stream<List<BranchEntry>> watchBranchesForLine(int lineId) {

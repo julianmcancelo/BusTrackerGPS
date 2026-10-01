@@ -75,13 +75,16 @@ class TransitRepository {
         ));
       }
 
-      final color = TransportUtils.getLineColor(line.number);
+      final validBranches = branchSummaries.where((b) => b.hasRoutes).toList();
+      if (validBranches.isNotEmpty) {
+        final color = TransportUtils.getLineColor(line.number);
 
-      result.add(TransitLineSummary(
-        line: line,
-        color: color,
-        branches: branchSummaries,
-      ));
+        result.add(TransitLineSummary(
+          line: line,
+          color: color,
+          branches: validBranches,
+        ));
+      }
     }
 
     // Ordenamiento numérico canónico de todas las líneas (9, 10, 15, ..., 520, 527)

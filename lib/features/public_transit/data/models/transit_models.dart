@@ -39,6 +39,7 @@ class TransitBranchSummary {
   });
 
   bool get hasAnyRoute => idaPoints.isNotEmpty || vueltaPoints.isNotEmpty;
+  bool get hasRoutes => hasAnyRoute;
   double get totalDistanceKm => idaDistanceKm + vueltaDistanceKm;
 }
 
