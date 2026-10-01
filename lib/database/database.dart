@@ -129,7 +129,7 @@ class AppDatabase extends _$AppDatabase {
       final name = lineData['name'] as String;
       final branchesList = lineData['branches'] as List<Map<String, String>>;
 
-      final existing = await (select(lines)..where((t) => t.number.equals(number))).getSingleOrNull();
+      final existing = (await (select(lines)..where((t) => t.number.equals(number))).get()).firstOrNull;
 
       int lineId;
       if (existing == null) {

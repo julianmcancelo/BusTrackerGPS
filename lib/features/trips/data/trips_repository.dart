@@ -22,6 +22,22 @@ class TripWithDetails {
   });
 }
 
+class ReferenceRouteWithDetails {
+  final ReferenceRouteEntry route;
+  final LineEntry line;
+  final BranchEntry branch;
+  final double distanceMeters;
+  final int pointCount;
+
+  ReferenceRouteWithDetails({
+    required this.route,
+    required this.line,
+    required this.branch,
+    required this.distanceMeters,
+    required this.pointCount,
+  });
+}
+
 class BranchDirectionStatus {
   final bool hasIda;
   final bool hasVuelta;
@@ -29,11 +45,17 @@ class BranchDirectionStatus {
   final TripWithDetails? lastVueltaTrip;
   final ReferenceRouteEntry? referenceIdaRoute;
   final ReferenceRouteEntry? referenceVueltaRoute;
+  
   final List<LatLng> idaPoints;
   final List<LatLng> vueltaPoints;
   final double idaDistanceMeters;
   final double vueltaDistanceMeters;
   final bool isFromRemotePlatform;
+
+  final List<LatLng> networkIdaPoints;
+  final List<LatLng> networkVueltaPoints;
+  final List<LatLng> localIdaPoints;
+  final List<LatLng> localVueltaPoints;
 
   bool get isComplete => hasIda && hasVuelta;
   bool get hasAny => hasIda || hasVuelta;
@@ -48,6 +70,10 @@ class BranchDirectionStatus {
     this.referenceVueltaRoute,
     this.idaPoints = const [],
     this.vueltaPoints = const [],
+    this.networkIdaPoints = const [],
+    this.networkVueltaPoints = const [],
+    this.localIdaPoints = const [],
+    this.localVueltaPoints = const [],
     this.idaDistanceMeters = 0.0,
     this.vueltaDistanceMeters = 0.0,
     this.isFromRemotePlatform = false,
@@ -232,6 +258,77 @@ class TripsRepository {
     });
   }
 
+  Stream<List<ReferenceRouteWithDetails>> watchReferenceRoutes({
+    String? searchQuery,
+    int? lineId,
+    int? branchId,
+    String? direction,
+  }) {
+    final query = db.select(db.referenceRoutes).join([
+      innerJoin(db.lines, db.lines.id.equalsExp(db.referenceRoutes.lineId)),
+      innerJoin(db.branches, db.branches.id.equalsExp(db.referenceRoutes.branchId)),
+    ])
+      ..orderBy([OrderingTerm.asc(db.lines.number), OrderingTerm.asc(db.branches.name)]);
+
+    if (lineId != null) {
+      query.where(db.referenceRoutes.lineId.equals(lineId));
+    }
+    if (branchId != null) {
+      query.where(db.referenceRoutes.branchId.equals(branchId));
+    }
+    if (direction != null && direction.isNotEmpty) {
+      query.where(db.referenceRoutes.direction.equals(direction));
+    }
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final term = '%$searchQuery%';
+      query.where(
+        db.lines.number.like(term) |
+            db.lines.name.like(term) |
+            db.branches.name.like(term) |
+            db.referenceRoutes.name.like(term),
+      );
+    }
+
+    return query.watch().map((rows) {
+      return rows.map((r) {
+        final route = r.readTable(db.referenceRoutes);
+        final line = r.readTable(db.lines);
+        final branch = r.readTable(db.branches);
+        final coords = GeoUtils.parseGeoJsonCoordinates(route.geoJsonData);
+        final dist = GeoUtils.calculatePolylineDistanceMeters(coords);
+        return ReferenceRouteWithDetails(
+          route: route,
+          line: line,
+          branch: branch,
+          distanceMeters: dist,
+          pointCount: coords.length,
+        );
+      }).toList();
+    });
+  }
+
+  Future<ReferenceRouteWithDetails?> getReferenceRouteWithDetails(int routeId) async {
+    final query = db.select(db.referenceRoutes).join([
+      innerJoin(db.lines, db.lines.id.equalsExp(db.referenceRoutes.lineId)),
+      innerJoin(db.branches, db.branches.id.equalsExp(db.referenceRoutes.branchId)),
+    ])..where(db.referenceRoutes.id.equals(routeId));
+
+    final row = await query.getSingleOrNull();
+    if (row == null) return null;
+
+    final route = row.readTable(db.referenceRoutes);
+    final coords = GeoUtils.parseGeoJsonCoordinates(route.geoJsonData);
+    final dist = GeoUtils.calculatePolylineDistanceMeters(coords);
+
+    return ReferenceRouteWithDetails(
+      route: route,
+      line: row.readTable(db.lines),
+      branch: row.readTable(db.branches),
+      distanceMeters: dist,
+      pointCount: coords.length,
+    );
+  }
+
   Future<TripWithDetails?> getLastTripConfig() async {
     final query = db.select(db.trips).join([
       innerJoin(db.lines, db.lines.id.equalsExp(db.trips.lineId)),
@@ -300,46 +397,56 @@ class TripsRepository {
       }
     }
 
-    // Resolve IDA coordinates and distance
-    List<LatLng> idaCoords = [];
+    // Resolve IDA coordinates
+    List<LatLng> networkIdaCoords = [];
+    List<LatLng> localIdaCoords = [];
     double idaDist = 0.0;
     final bool hasIda = lastIda != null || refIda != null;
 
+    if (refIda != null) {
+      networkIdaCoords = GeoUtils.parseGeoJsonCoordinates(refIda.geoJsonData);
+      idaDist = GeoUtils.calculatePolylineDistanceMeters(networkIdaCoords);
+    }
+    
     if (lastIda != null) {
       final tripId = lastIda.trip.id;
       final rawPts = await (db.select(db.trackPoints)
             ..where((t) => t.tripId.equals(tripId))
             ..orderBy([(t) => OrderingTerm.asc(t.timestamp)]))
           .get();
-      idaCoords = rawPts
+      localIdaCoords = rawPts
           .where((p) => p.quality != 'OUTLIER')
           .map((p) => LatLng(p.latitude, p.longitude))
           .toList();
-      idaDist = lastIda.trip.distanceMeters;
-    } else if (refIda != null) {
-      idaCoords = GeoUtils.parseGeoJsonCoordinates(refIda.geoJsonData);
-      idaDist = GeoUtils.calculatePolylineDistanceMeters(idaCoords);
+      if (refIda == null) {
+        idaDist = lastIda.trip.distanceMeters;
+      }
     }
 
-    // Resolve VUELTA coordinates and distance
-    List<LatLng> vueltaCoords = [];
+    // Resolve VUELTA coordinates
+    List<LatLng> networkVueltaCoords = [];
+    List<LatLng> localVueltaCoords = [];
     double vueltaDist = 0.0;
     final bool hasVuelta = lastVuelta != null || refVuelta != null;
 
+    if (refVuelta != null) {
+      networkVueltaCoords = GeoUtils.parseGeoJsonCoordinates(refVuelta.geoJsonData);
+      vueltaDist = GeoUtils.calculatePolylineDistanceMeters(networkVueltaCoords);
+    }
+    
     if (lastVuelta != null) {
       final tripId = lastVuelta.trip.id;
       final rawPts = await (db.select(db.trackPoints)
             ..where((t) => t.tripId.equals(tripId))
             ..orderBy([(t) => OrderingTerm.asc(t.timestamp)]))
           .get();
-      vueltaCoords = rawPts
+      localVueltaCoords = rawPts
           .where((p) => p.quality != 'OUTLIER')
           .map((p) => LatLng(p.latitude, p.longitude))
           .toList();
-      vueltaDist = lastVuelta.trip.distanceMeters;
-    } else if (refVuelta != null) {
-      vueltaCoords = GeoUtils.parseGeoJsonCoordinates(refVuelta.geoJsonData);
-      vueltaDist = GeoUtils.calculatePolylineDistanceMeters(vueltaCoords);
+      if (refVuelta == null) {
+        vueltaDist = lastVuelta.trip.distanceMeters;
+      }
     }
 
     final isRemote = (refIda != null && lastIda == null) || (refVuelta != null && lastVuelta == null);
@@ -351,8 +458,12 @@ class TripsRepository {
       lastVueltaTrip: lastVuelta,
       referenceIdaRoute: refIda,
       referenceVueltaRoute: refVuelta,
-      idaPoints: idaCoords,
-      vueltaPoints: vueltaCoords,
+      idaPoints: networkIdaCoords.isNotEmpty ? networkIdaCoords : localIdaCoords,
+      vueltaPoints: networkVueltaCoords.isNotEmpty ? networkVueltaCoords : localVueltaCoords,
+      networkIdaPoints: networkIdaCoords,
+      networkVueltaPoints: networkVueltaCoords,
+      localIdaPoints: localIdaCoords,
+      localVueltaPoints: localVueltaCoords,
       idaDistanceMeters: idaDist,
       vueltaDistanceMeters: vueltaDist,
       isFromRemotePlatform: isRemote,

@@ -7,7 +7,10 @@ import '../../transport/data/transport_repository.dart';
 import '../../trips/data/trips_repository.dart';
 import 'capture_notifier.dart';
 import '../domain/capture_state.dart';
+import '../../../core/utils/line_hierarchy_ext.dart';
 import '../../../core/permissions/permissions_handler.dart';
+import '../../../core/services/sync_service.dart';
+import '../../../database/database_provider.dart';
 
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
@@ -17,6 +20,7 @@ class SetupScreen extends ConsumerStatefulWidget {
 }
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
+  String? _selectedHierarchy;
   LineEntry? _selectedLine;
   BranchEntry? _selectedBranch;
   String _direction = 'IDA';
@@ -124,6 +128,27 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
+  Future<void> _refreshConfig() async {
+    setState(() => _isLoading = true);
+    try {
+      final db = ref.read(databaseProvider);
+      await SyncService.fetchOfficialLines(db);
+      await _loadTransportData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Datos actualizados, todo listo!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Uy, hubo un error al actualizar: $e')),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final captureState = ref.watch(captureNotifierProvider);
@@ -135,10 +160,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           children: [
             Icon(Icons.directions_bus, size: 28),
             SizedBox(width: 8),
-            Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('BITÁCORA GPS', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshConfig,
+            tooltip: 'Actualizar configuración',
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
@@ -212,28 +242,63 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text('Línea', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Text('¿De dónde es la línea? (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey)),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String?>(
+                            value: _selectedHierarchy,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.blueGrey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: null, child: Text('Mostrar todas')),
+                              DropdownMenuItem(value: 'Jurisdicción Nacional', child: Text('Nacional')),
+                              DropdownMenuItem(value: 'Jurisdicción Provincial', child: Text('Provincial')),
+                              DropdownMenuItem(value: 'Jurisdicción Municipal', child: Text('Municipal')),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedHierarchy = val;
+                                if (_selectedLine != null && val != null && _selectedLine!.hierarchy != val) {
+                                  _selectedLine = null;
+                                  _branches = [];
+                                  _selectedBranch = null;
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          const Text('¿Qué línea es?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey)),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<LineEntry>(
                             value: _selectedLine,
                             decoration: InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              filled: true,
+                              fillColor: Colors.blueGrey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
-                            items: _lines.map((l) {
+                            items: _lines
+                                .where((l) => _selectedHierarchy == null || l.hierarchy == _selectedHierarchy)
+                                .map((l) {
                               return DropdownMenuItem(value: l, child: Text(l.name));
                             }).toList(),
                             onChanged: _onLineChanged,
                           ),
                           const SizedBox(height: 16),
 
-                          const Text('Ramal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Text('¿Y cuál ramal?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey)),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<BranchEntry>(
                             value: _selectedBranch,
                             decoration: InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              filled: true,
+                              fillColor: Colors.blueGrey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                             items: _branches.map((b) {
                               return DropdownMenuItem(value: b, child: Text(b.name));
@@ -242,7 +307,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           ),
                           const SizedBox(height: 20),
 
-                          const Text('Sentido', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Text('¿Para dónde vas?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey)),
                           const SizedBox(height: 8),
                           Row(
                             children: [
@@ -266,9 +331,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                 child: TextField(
                                   controller: _internalController,
                                   decoration: InputDecoration(
-                                    labelText: 'Interno',
+                                    labelText: 'Interno del bondi',
                                     hintText: 'Ej. 1234',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    filled: true,
+                                    fillColor: Colors.blueGrey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                                   ),
                                   keyboardType: TextInputType.number,
                                 ),
@@ -278,9 +345,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                 child: TextField(
                                   controller: _domainController,
                                   decoration: InputDecoration(
-                                    labelText: 'Dominio / Patente',
+                                    labelText: 'Patente',
                                     hintText: 'Ej. AB123CD',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    filled: true,
+                                    fillColor: Colors.blueGrey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                                   ),
                                   textCapitalization: TextCapitalization.characters,
                                 ),
@@ -297,19 +366,25 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.green.shade700,
+                      backgroundColor: Colors.blue.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                     onPressed: _startCapture,
-                    icon: const Icon(Icons.play_arrow, size: 28),
-                    label: const Text('INICIAR CAPTURA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 30),
+                    label: const Text('EMPEZAR RECORRIDO', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                   ),
 
                   const SizedBox(height: 12),
 
                   OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      side: BorderSide(color: Colors.blue.shade200, width: 2),
+                    ),
                     onPressed: _loadLastTripConfig,
                     icon: const Icon(Icons.history),
-                    label: const Text('REPETIR ÚLTIMA CONFIGURACIÓN'),
+                    label: const Text('USAR EL ÚLTIMO VIAJE', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),

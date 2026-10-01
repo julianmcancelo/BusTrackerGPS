@@ -20,27 +20,70 @@ class TransportRepository {
     return (db.select(db.lines)
           ..where((t) => t.active.equals(true))
           ..orderBy([(t) => OrderingTerm.asc(t.number)]))
-        .watch();
+        .watch()
+        .map((lines) {
+      final seen = <String>{};
+      return lines.where((l) => seen.add(l.number.trim().toLowerCase())).toList();
+    });
   }
 
   Future<List<LineEntry>> getAllLines() async {
     await ensureDefaultTransportDataSeeded();
-    return (db.select(db.lines)
+    final allLines = await (db.select(db.lines)
           ..where((t) => t.active.equals(true))
           ..orderBy([(t) => OrderingTerm.asc(t.number)]))
         .get();
+    
+    // Deduplicate by number
+    final seen = <String>{};
+    return allLines.where((l) => seen.add(l.number.trim().toLowerCase())).toList();
   }
 
   Stream<List<BranchEntry>> watchBranchesForLine(int lineId) {
     return (db.select(db.branches)
-          ..where((t) => t.lineId.equals(lineId) & t.active.equals(true)))
-        .watch();
+          ..where((t) => t.lineId.equals(lineId) & t.active.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .watch()
+        .map((branches) {
+      final seen = <String>{};
+      return branches.where((b) => seen.add(b.name.trim().toLowerCase())).toList();
+    });
+  }
+
+  Stream<List<BranchEntry>> watchBranchesForLineEntity(LineEntry line) {
+    final query = db.select(db.branches).join([
+      innerJoin(db.lines, db.lines.id.equalsExp(db.branches.lineId)),
+    ])
+      ..where(db.lines.number.equals(line.number) & db.branches.active.equals(true) & db.lines.active.equals(true))
+      ..orderBy([OrderingTerm.asc(db.branches.name)]);
+
+    return query.watch().map((rows) {
+      final branches = rows.map((r) => r.readTable(db.branches)).toList();
+      final seen = <String>{};
+      return branches.where((b) => seen.add(b.name.trim().toLowerCase())).toList();
+    });
   }
 
   Future<List<BranchEntry>> getBranchesForLine(int lineId) async {
-    return (db.select(db.branches)
+    final allBranches = await (db.select(db.branches)
           ..where((t) => t.lineId.equals(lineId) & t.active.equals(true)))
         .get();
+        
+    final seen = <String>{};
+    return allBranches.where((b) => seen.add(b.name.trim().toLowerCase())).toList();
+  }
+
+  Future<List<BranchEntry>> getBranchesForLineEntity(LineEntry line) async {
+    final query = db.select(db.branches).join([
+      innerJoin(db.lines, db.lines.id.equalsExp(db.branches.lineId)),
+    ])
+      ..where(db.lines.number.equals(line.number) & db.branches.active.equals(true) & db.lines.active.equals(true))
+      ..orderBy([OrderingTerm.asc(db.branches.name)]);
+
+    final rows = await query.get();
+    final branches = rows.map((r) => r.readTable(db.branches)).toList();
+    final seen = <String>{};
+    return branches.where((b) => seen.add(b.name.trim().toLowerCase())).toList();
   }
 
   Future<int> addLine({required String number, required String name}) {
@@ -64,6 +107,34 @@ class TransportRepository {
             description: Value(description),
           ),
         );
+  }
+
+  Future<void> updateLine({
+    required int lineId,
+    required String number,
+    required String name,
+  }) async {
+    await (db.update(db.lines)..where((t) => t.id.equals(lineId))).write(
+      LinesCompanion(
+        number: Value(number),
+        name: Value(name),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateBranch({
+    required int branchId,
+    required String name,
+    String? description,
+  }) async {
+    await (db.update(db.branches)..where((t) => t.id.equals(branchId))).write(
+      BranchesCompanion(
+        name: Value(name),
+        description: Value(description),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> deleteLine(int lineId) async {

@@ -81,7 +81,7 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
               if (mounted) {
                 setState(() {
                   _isDownloading = false;
-                  _statusText = '✓ Descarga completada';
+                  _statusText = 'Descarga completada con éxito';
                 });
               }
             },

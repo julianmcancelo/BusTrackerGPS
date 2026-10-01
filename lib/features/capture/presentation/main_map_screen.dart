@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../database/database.dart';
+import '../../../database/database_provider.dart';
 import '../../transport/data/transport_repository.dart';
 import '../../trips/data/trips_repository.dart';
 import '../domain/capture_state.dart';
@@ -15,7 +16,9 @@ import '../../../core/utils/geo_utils.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/github_update_service.dart';
 import '../data/gps_repository.dart';
+import '../../../core/utils/line_hierarchy_ext.dart';
 import '../../../core/permissions/permissions_handler.dart';
+import '../../../core/services/sync_service.dart';
 
 class MainMapScreen extends ConsumerStatefulWidget {
   const MainMapScreen({super.key});
@@ -28,6 +31,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
   final MapController _mapController = MapController();
   final MediaService _mediaService = MediaService();
 
+  String? _selectedHierarchy;
   LineEntry? _selectedLine;
   BranchEntry? _selectedBranch;
   String _direction = 'IDA';
@@ -39,6 +43,9 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
   List<LineEntry> _lines = [];
   List<BranchEntry> _branches = [];
   bool _isLoadingTransport = true;
+  bool _isConfigExpanded = true;
+  bool _isVehicleExpanded = false;
+  bool _isFilterExpanded = false;
   bool _autoFollow = true;
   bool _isRecordingAudio = false;
 
@@ -49,7 +56,8 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
   BranchDirectionStatus? _directionStatus;
   List<LatLng> _referenceIdaPoints = [];
   List<LatLng> _referenceVueltaPoints = [];
-  bool _showReferenceTracks = true;
+  List<LatLng> _localIdaPoints = [];
+  List<LatLng> _localVueltaPoints = [];
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -101,6 +109,27 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     }
   }
 
+  Future<void> _refreshConfig() async {
+    setState(() => _isLoadingTransport = true);
+    try {
+      final db = ref.read(databaseProvider);
+      await SyncService.fetchBitacoraGpsSurveys(db);
+      await _loadTransportData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Datos de relevamientos actualizados!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Uy, hubo un error al actualizar: $e')),
+        );
+      }
+      setState(() => _isLoadingTransport = false);
+    }
+  }
+
   Future<void> _onLineChanged(LineEntry? line) async {
     if (line == null) return;
     setState(() {
@@ -137,9 +166,8 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         _directionStatus = status;
         _referenceIdaPoints = idaPts;
         _referenceVueltaPoints = vueltaPts;
-        if (idaPts.isNotEmpty || vueltaPts.isNotEmpty) {
-          _showReferenceTracks = true;
-        }
+        _localIdaPoints = status.localIdaPoints;
+        _localVueltaPoints = status.localVueltaPoints;
 
         // Auto-select missing direction so user can register immediately
         if (status.hasIda && !status.hasVuelta) {
@@ -237,7 +265,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
       await ref.read(captureNotifierProvider.notifier).addPhoto(file.path);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✓ Foto guardada y georreferenciada')),
+          const SnackBar(content: Text('Foto guardada y georreferenciada')),
         );
       }
     }
@@ -251,7 +279,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         await ref.read(captureNotifierProvider.notifier).addAudio(file.path);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✓ Nota de audio guardada')),
+            const SnackBar(content: Text('Nota de audio guardada')),
           );
         }
       }
@@ -469,6 +497,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
       },
       child: Scaffold(
         key: _scaffoldKey,
+        extendBody: true,
         drawer: Drawer(
           child: Column(
             children: [
@@ -675,30 +704,27 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                 userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
               ),
 
-              // Reference Polylines for visual trazo comparisons
-              if (_showReferenceTracks) ...[
-                if (_referenceIdaPoints.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
+
+              
+              // Trazas relevadas por otros usuarios (guardadas en reference_routes)
+              if (_referenceIdaPoints.isNotEmpty || _referenceVueltaPoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    if (_referenceIdaPoints.isNotEmpty)
                       Polyline(
                         points: _referenceIdaPoints,
-                        strokeWidth: 4.0,
-                        color: Colors.blue.shade800.withOpacity(0.7),
+                        strokeWidth: 4.5,
+                        color: Colors.blue.withOpacity(0.7),
                       ),
-                    ],
-                  ),
-                if (_referenceVueltaPoints.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
+                    if (_referenceVueltaPoints.isNotEmpty)
                       Polyline(
                         points: _referenceVueltaPoints,
-                        strokeWidth: 4.0,
-                        color: Colors.teal.shade700.withOpacity(0.7),
+                        strokeWidth: 4.5,
+                        color: Colors.orange.withOpacity(0.7),
                       ),
-                    ],
-                  ),
-              ],
-
+                  ],
+                ),
+              
               // Active recording track polyline
               if (_polyPoints.isNotEmpty)
                 PolylineLayer(
@@ -749,40 +775,6 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
             ],
           ),
 
-          // Map Reference Polyline Action Buttons
-          if (_referenceIdaPoints.isNotEmpty || _referenceVueltaPoints.isNotEmpty)
-            Positioned(
-              top: 95,
-              right: 16,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton.small(
-                    heroTag: 'fit_loaded_track',
-                    backgroundColor: Colors.blue.shade700,
-                    onPressed: _fitCameraToLoadedTrack,
-                    tooltip: 'Centrar en recorrido relevado',
-                    child: const Icon(Icons.zoom_in_map, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  FloatingActionButton.small(
-                    heroTag: 'toggle_ref_tracks',
-                    backgroundColor: _showReferenceTracks ? Colors.indigo : Colors.grey.shade700,
-                    onPressed: () {
-                      setState(() => _showReferenceTracks = !_showReferenceTracks);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(_showReferenceTracks ? 'Traza visible en mapa' : 'Traza oculta en mapa'),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    tooltip: _showReferenceTracks ? 'Ocultar traza en mapa' : 'Mostrar traza en mapa',
-                    child: Icon(_showReferenceTracks ? Icons.layers : Icons.layers_clear, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
 
           // Top Status Header / Telemetry Overlay
           SafeArea(
@@ -793,29 +785,30 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    color: Theme.of(context).cardColor,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    color: Colors.white,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       child: Row(
                         children: [
                           Builder(
                             builder: (ctx) => IconButton(
-                              icon: const Icon(Icons.menu, size: 28),
+                              icon: const Icon(Icons.menu, color: Colors.blueGrey),
                               onPressed: () => Scaffold.of(ctx).openDrawer(),
                             ),
                           ),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: state.status == CaptureStatus.idle
                                 ? Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      const Text('LANÚS DIGITAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                       Text(
                                         pos != null ? 'GPS Listo (±${pos.accuracy.toStringAsFixed(0)}m)' : 'Buscando señal GPS...',
-                                        style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
                                       ),
                                     ],
                                   )
@@ -855,7 +848,12 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                         style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
                                       ),
                                     ],
-                                  ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: Colors.blueGrey),
+                            onPressed: _refreshConfig,
+                            tooltip: 'Sincronizar',
                           ),
                           IconButton(
                             icon: Icon(_autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.blue),
@@ -949,50 +947,68 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.directions_bus, color: Colors.blue, size: 22),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'CONFIGURACIÓN DE RECORRIDO',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
-                                  ),
-                                ),
-                                if (_directionStatus != null) ...[
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: _directionStatus!.isComplete ? Colors.green.shade100 : Colors.orange.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _directionStatus!.isComplete ? 'TRAZO COMPLETO ✓' : 'TRAZO EN PROCESO',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: _directionStatus!.isComplete ? Colors.green.shade900 : Colors.orange.shade900,
+                            GestureDetector(
+                              onTap: () => setState(() => _isConfigExpanded = !_isConfigExpanded),
+                              behavior: HitTestBehavior.opaque,
+                              child: Column(
+                                children: [
+                                  Center(
+                                    child: Container(
+                                      width: 40,
+                                      height: 6,
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade400,
+                                        borderRadius: BorderRadius.circular(3),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Recorded Directions Status Badge Row
-                            if (_directionStatus != null)
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: _directionStatus!.hasAny
-                                      ? Colors.green.shade50.withOpacity(0.8)
-                                      : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _directionStatus!.hasAny ? Colors.green.shade300 : Colors.transparent,
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.directions_bus, color: Colors.blue, size: 22),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Text(
+                                          'CONFIGURACIÓN DE RECORRIDO',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
+                                        ),
+                                      ),
+                                      if (_directionStatus != null) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: _directionStatus!.isComplete ? Colors.green.shade100 : Colors.orange.shade100,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            _directionStatus!.isComplete ? 'TRAZO COMPLETO' : 'TRAZO EN PROCESO',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: _directionStatus!.isComplete ? Colors.green.shade900 : Colors.orange.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      Icon(_isConfigExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up, color: Colors.grey),
+                                    ],
                                   ),
-                                ),
+                                  const SizedBox(height: 10),
+                                  
+                                  // Recorded Directions Status Badge Row
+                                  if (_directionStatus != null)
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      decoration: BoxDecoration(
+                                        color: _directionStatus!.hasAny
+                                            ? Colors.green.shade50.withValues(alpha: 0.8)
+                                            : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: _directionStatus!.hasAny ? Colors.green.shade300 : Colors.transparent,
+                                        ),
+                                      ),
                                 child: Column(
                                   children: [
                                     Row(
@@ -1006,7 +1022,7 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                         Expanded(
                                           child: Text(
                                             _directionStatus!.hasAny
-                                                ? '✓ TRAZA RELEVADA (${GeoUtils.formatDistance(_directionStatus!.totalDistanceMeters)})'
+                                                ? 'TRAZA RELEVADA (${GeoUtils.formatDistance(_directionStatus!.totalDistanceMeters)})'
                                                 : 'PENDIENTE DE RELEVAMIENTO',
                                             style: TextStyle(
                                               fontSize: 12,
@@ -1080,60 +1096,144 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                     ),
                                   ],
                                 ),
-                              ),
+                              ), // End of Container
+                            ],
+                          ),
+                        ), // End of GestureDetector
 
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<LineEntry>(
-                                    value: _selectedLine,
-                                    isDense: true,
-                                    borderRadius: BorderRadius.circular(12),
-                                    decoration: InputDecoration(
-                                      labelText: 'Línea de Colectivo',
-                                      prefixIcon: const Icon(Icons.format_list_numbered),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              child: _isConfigExpanded ? Column(
+                                children: [
+                            InkWell(
+                              onTap: () => setState(() => _isFilterExpanded = !_isFilterExpanded),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.filter_list,
+                                      size: 14,
+                                      color: _selectedHierarchy != null ? Colors.blue.shade700 : Colors.blueGrey.shade500,
                                     ),
-                                    items: _lines
-                                        .map((l) => DropdownMenuItem(
-                                              value: l,
-                                              child: Text('Línea ${l.number}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                            ))
-                                        .toList(),
-                                    onChanged: _onLineChanged,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: DropdownButtonFormField<BranchEntry>(
-                                    value: _selectedBranch,
-                                    isDense: true,
-                                    borderRadius: BorderRadius.circular(12),
-                                    decoration: InputDecoration(
-                                      labelText: 'Ramal',
-                                      prefixIcon: const Icon(Icons.alt_route),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _selectedHierarchy != null ? 'Jurisdicción: ${_selectedHierarchy!.split(' ')[1]}' : 'Filtrar por jurisdicción (Opcional)',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: _selectedHierarchy != null ? Colors.blue.shade700 : Colors.blueGrey.shade500,
+                                      ),
                                     ),
-                                    items: _branches
-                                        .map((b) => DropdownMenuItem(
-                                              value: b,
-                                              child: Text(b.name, overflow: TextOverflow.ellipsis),
-                                            ))
-                                        .toList(),
-                                    onChanged: _onBranchChanged,
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            ),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              child: _isFilterExpanded
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(top: 6.0, bottom: 8.0),
+                                      child: DropdownButtonFormField<String?>(
+                                        value: _selectedHierarchy,
+                                        isDense: true,
+                                        borderRadius: BorderRadius.circular(16),
+                                        decoration: InputDecoration(
+                                          labelText: 'Jurisdicción',
+                                          labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                                          prefixIcon: Icon(Icons.account_balance, color: Colors.blueGrey.shade400, size: 18),
+                                          filled: true,
+                                          fillColor: Colors.blueGrey.shade50,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                        ),
+                                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                                        items: const [
+                                          DropdownMenuItem(value: null, child: Text('Todas las líneas')),
+                                          DropdownMenuItem(value: 'Jurisdicción Nacional', child: Text('Nacional (1-199)')),
+                                          DropdownMenuItem(value: 'Jurisdicción Provincial', child: Text('Provincial (200-499)')),
+                                          DropdownMenuItem(value: 'Jurisdicción Municipal', child: Text('Municipal (500+)')),
+                                        ],
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _selectedHierarchy = val;
+                                            _isFilterExpanded = false; // Auto close on select
+                                            if (_selectedLine != null && val != null && _selectedLine!.hierarchy != val) {
+                                              _selectedLine = null;
+                                              _branches = [];
+                                              _selectedBranch = null;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                            DropdownButtonFormField<LineEntry>(
+                              value: _selectedLine,
+                              isDense: true,
+                              isExpanded: true,
+                              borderRadius: BorderRadius.circular(16),
+                              decoration: InputDecoration(
+                                labelText: '¿Qué línea vas a relevar?',
+                                labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold, fontSize: 13),
+                                prefixIcon: Icon(Icons.format_list_numbered, color: Colors.blueGrey.shade400, size: 20),
+                                filled: true,
+                                fillColor: Colors.blueGrey.shade50,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              items: _lines
+                                  .where((l) => _selectedHierarchy == null || l.hierarchy == _selectedHierarchy)
+                                  .map((l) => DropdownMenuItem(
+                                        value: l,
+                                        child: Text('Línea ${l.number}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      ))
+                                  .toList(),
+                              onChanged: _onLineChanged,
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<BranchEntry>(
+                              value: _selectedBranch,
+                              isDense: true,
+                              isExpanded: true,
+                              borderRadius: BorderRadius.circular(16),
+                              decoration: InputDecoration(
+                                labelText: '¿Y cuál ramal?',
+                                labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold, fontSize: 13),
+                                prefixIcon: Icon(Icons.alt_route, color: Colors.blueGrey.shade400, size: 20),
+                                filled: true,
+                                fillColor: Colors.blueGrey.shade50,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              items: _branches
+                                  .map((b) => DropdownMenuItem(
+                                        value: b,
+                                        child: Text(b.name, overflow: TextOverflow.ellipsis),
+                                      ))
+                                  .toList(),
+                              onChanged: _onBranchChanged,
                             ),
                             const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
                                   child: SegmentedButton<String>(
+                                    style: SegmentedButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                                      backgroundColor: Colors.white,
+                                      selectedBackgroundColor: Colors.blue.shade100,
+                                      selectedForegroundColor: Colors.blue.shade900,
+                                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
                                     segments: const [
-                                      ButtonSegment(value: 'IDA', label: Text('IDA'), icon: Icon(Icons.arrow_forward)),
-                                      ButtonSegment(value: 'VUELTA', label: Text('VUELTA'), icon: Icon(Icons.arrow_back)),
+                                      ButtonSegment(value: 'IDA', label: Text('IDA'), icon: Icon(Icons.arrow_forward, size: 16)),
+                                      ButtonSegment(value: 'VUELTA', label: Text('VUELTA'), icon: Icon(Icons.arrow_back, size: 16)),
                                     ],
                                     selected: {_direction},
                                     onSelectionChanged: (set) => setState(() => _direction = set.first),
@@ -1142,35 +1242,82 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _internalController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Interno (opcional)',
-                                      isDense: true,
-                                      prefixIcon: const Icon(Icons.tag, size: 20),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            InkWell(
+                              onTap: () => setState(() => _isVehicleExpanded = !_isVehicleExpanded),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Datos del vehículo (Opcional)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueGrey.shade600,
+                                      ),
                                     ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _domainController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Dominio/Patente',
-                                      isDense: true,
-                                      prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      _isVehicleExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                      size: 18,
+                                      color: Colors.blueGrey.shade600,
                                     ),
-                                    textCapitalization: TextCapitalization.characters,
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              child: _isVehicleExpanded
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _internalController,
+                                              decoration: InputDecoration(
+                                                labelText: 'Interno',
+                                                labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                                                isDense: true,
+                                                prefixIcon: Icon(Icons.tag, size: 18, color: Colors.blueGrey.shade400),
+                                                filled: true,
+                                                fillColor: Colors.blueGrey.shade50,
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              ),
+                                              style: const TextStyle(fontSize: 13),
+                                              keyboardType: TextInputType.number,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _domainController,
+                                              decoration: InputDecoration(
+                                                labelText: 'Patente',
+                                                labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                                                isDense: true,
+                                                prefixIcon: Icon(Icons.badge_outlined, size: 18, color: Colors.blueGrey.shade400),
+                                                filled: true,
+                                                fillColor: Colors.blueGrey.shade50,
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              ),
+                                              style: const TextStyle(fontSize: 13),
+                                              textCapitalization: TextCapitalization.characters,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                                ],
+                              ) : const SizedBox.shrink(),
+                            ), // End of AnimatedSize items
                             const SizedBox(height: 12),
                             FilledButton.icon(
                               style: FilledButton.styleFrom(
@@ -1179,16 +1326,16 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                                     ? Colors.blue.shade800
                                     : (_directionStatus?.hasIda == true && _direction == 'VUELTA'
                                         ? Colors.teal.shade700
-                                        : Colors.green.shade700),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                        : Colors.blue.shade700),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
                               onPressed: _startCapture,
-                              icon: const Icon(Icons.play_arrow, size: 28),
+                              icon: const Icon(Icons.play_arrow_rounded, size: 30),
                               label: Text(
                                 _directionStatus?.hasIda == true && _direction == 'VUELTA'
-                                    ? 'INICIAR REGISTRO DE VUELTA'
-                                    : 'INICIAR CAPTURA DE RECORRIDO',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                    ? 'GRABAR LA VUELTA'
+                                    : 'EMPEZAR RECORRIDO',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                               ),
                             ),
                           ],
@@ -1300,6 +1447,36 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
               ),
             ),
           ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        backgroundColor: Colors.white,
+        elevation: 8,
+        onDestinationSelected: (idx) {
+          switch (idx) {
+            case 0:
+              break;
+            case 1:
+              context.push('/trips');
+              break;
+            case 2:
+              context.push('/transport');
+              break;
+            case 3:
+              context.push('/maps');
+              break;
+            case 4:
+              context.push('/settings');
+              break;
+          }
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Mapa'),
+          NavigationDestination(icon: Icon(Icons.list_alt_outlined), selectedIcon: Icon(Icons.list_alt), label: 'Recorridos'),
+          NavigationDestination(icon: Icon(Icons.directions_bus_outlined), selectedIcon: Icon(Icons.directions_bus), label: 'Líneas'),
+          NavigationDestination(icon: Icon(Icons.cloud_download_outlined), selectedIcon: Icon(Icons.cloud_download), label: 'Mapas'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Ajustes'),
         ],
       ),
     ),

@@ -68,7 +68,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       await ref.read(captureNotifierProvider.notifier).addPhoto(file.path);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✓ Foto guardada y georreferenciada')),
+          const SnackBar(content: Text('Foto guardada y georreferenciada')),
         );
       }
     }
@@ -82,7 +82,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
         await ref.read(captureNotifierProvider.notifier).addAudio(file.path);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✓ Nota de audio guardada')),
+            const SnackBar(content: Text('Nota de audio guardada')),
           );
         }
       }
@@ -134,8 +134,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(type.iconEmoji, style: const TextStyle(fontSize: 28)),
-                          const SizedBox(height: 4),
+                          Icon(type.icon, size: 28, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(height: 6),
                           Text(type.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                         ],
                       ),
@@ -260,7 +260,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '🟡 POSIBLE PARADA: Detenido ${state.possibleStopSeconds}s',
+                        'POSIBLE PARADA: Detenido ${state.possibleStopSeconds}s',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                     ),

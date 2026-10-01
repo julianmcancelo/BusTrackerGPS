@@ -4,6 +4,7 @@ import '../features/capture/presentation/main_map_screen.dart';
 import '../features/capture/presentation/capture_screen.dart';
 import '../features/trips/presentation/trip_list_screen.dart';
 import '../features/trips/presentation/trip_detail_screen.dart';
+import '../features/trips/presentation/reference_route_detail_screen.dart';
 import '../features/transport/presentation/transport_management_screen.dart';
 import '../features/offline_maps/presentation/offline_maps_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -32,6 +33,14 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id']!;
         return TripDetailScreen(tripId: id);
+      },
+    ),
+    GoRoute(
+      path: '/reference-routes/:id',
+      name: 'reference_route_detail',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+        return ReferenceRouteDetailScreen(routeId: id);
       },
     ),
     GoRoute(

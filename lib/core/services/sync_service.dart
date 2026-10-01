@@ -214,7 +214,7 @@ class SyncService {
 
           if (numero.isEmpty) continue;
 
-          final existingLine = await (db.select(db.lines)..where((l) => l.number.equals(numero))).getSingleOrNull();
+          final existingLine = (await (db.select(db.lines)..where((l) => l.number.equals(numero))).get()).firstOrNull;
           int lineId;
 
           if (existingLine == null) {
@@ -227,59 +227,46 @@ class SyncService {
             updatedCount++;
           } else {
             lineId = existingLine.id;
+            // Update line name if it changed on the server
+            final newName = item['nombre']?.toString() ?? 'Línea $numero';
+            if (existingLine.name != newName) {
+              await (db.update(db.lines)..where((l) => l.id.equals(lineId))).write(
+                LinesCompanion(name: Value(newName)),
+              );
+              updatedCount++;
+            }
           }
 
-          final existingBranch = await (db.select(db.branches)
+          final existingBranch = (await (db.select(db.branches)
                 ..where((b) => b.lineId.equals(lineId) & b.name.equals(ramal)))
-              .getSingleOrNull();
+              .get()).firstOrNull;
 
           int branchId;
+          final newDesc = item['descripcion']?.toString() ?? item['desc']?.toString();
+          
           if (existingBranch == null) {
             branchId = await db.into(db.branches).insert(
                   BranchesCompanion.insert(
                     lineId: lineId,
                     name: ramal,
-                    description: Value(item['descripcion']?.toString() ?? item['desc']?.toString()),
+                    description: Value(newDesc),
                   ),
                 );
             updatedCount++;
           } else {
             branchId = existingBranch.id;
-          }
-
-          final datosGeo = item['datosGeo'];
-          if (datosGeo != null) {
-            final rawGeoString = datosGeo is String ? datosGeo : jsonEncode(datosGeo);
-            if (rawGeoString.trim().isNotEmpty && rawGeoString != '{}') {
-              final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
-              final existingRef = await (db.select(db.referenceRoutes)
-                    ..where((r) =>
-                        r.lineId.equals(lineId) &
-                        r.branchId.equals(branchId) &
-                        r.direction.equals(sentido)))
-                  .getSingleOrNull();
-
-              if (existingRef == null) {
-                await db.into(db.referenceRoutes).insert(
-                      ReferenceRoutesCompanion.insert(
-                        lineId: lineId,
-                        branchId: branchId,
-                        direction: sentido,
-                        name: 'Línea $numero - $ramal ($sentido)',
-                        format: 'GEOJSON',
-                        geoJsonData: rawGeoString,
-                      ),
-                    );
-              } else {
-                await (db.update(db.referenceRoutes)..where((r) => r.id.equals(existingRef.id))).write(
-                  ReferenceRoutesCompanion(
-                    geoJsonData: Value(rawGeoString),
-                    name: Value('Línea $numero - $ramal ($sentido)'),
-                  ),
-                );
-              }
+            // Update branch description if it changed
+            if (newDesc != null && existingBranch.description != newDesc) {
+              await (db.update(db.branches)..where((b) => b.id.equals(branchId))).write(
+                BranchesCompanion(description: Value(newDesc)),
+              );
+              updatedCount++;
             }
           }
+
+          // NOTA: A pedido del usuario, NO guardamos las trazas (datosGeo) oficiales de Lanús Digital,
+          // ya que ensucian el mapa. Solo mantenemos las Líneas y Ramales en la base de datos.
+          // Las trazas que sí se guardan provienen de fetchBitacoraGpsSurveys() (otros usuarios).
         }
       }
     } catch (_) {}
@@ -315,7 +302,7 @@ class SyncService {
           final lineaNumero = (item['lineaNumero'] ?? item['linea'] ?? item['numero'] ?? '').toString();
           final ramal = (item['ramal'] ?? item['subcategoria'] ?? 'Principal').toString();
           final sentido = (item['sentido'] ?? 'IDA').toString().toUpperCase();
-          final datosGeo = item['datosGeo'];
+          final datosGeo = item['datosGeo'] ?? item['datos_geo'] ?? item['geoData'] ?? item['geojson'] ?? item['geo_json'] ?? item['recorrido'] ?? item['trazas'] ?? item['route_data'];
 
           if (lineaNumero.isEmpty || datosGeo == null) continue;
 
@@ -323,7 +310,7 @@ class SyncService {
           if (rawGeoString.trim().isEmpty || rawGeoString == '{}') continue;
 
           // Asegura que exista la Línea
-          final existingLine = await (db.select(db.lines)..where((l) => l.number.equals(lineaNumero))).getSingleOrNull();
+          final existingLine = (await (db.select(db.lines)..where((l) => l.number.equals(lineaNumero))).get()).firstOrNull;
           int lineId;
           if (existingLine == null) {
             lineId = await db.into(db.lines).insert(
@@ -337,9 +324,9 @@ class SyncService {
           }
 
           // Asegura que exista el Ramal
-          final existingBranch = await (db.select(db.branches)
+          final existingBranch = (await (db.select(db.branches)
                 ..where((b) => b.lineId.equals(lineId) & b.name.equals(ramal)))
-              .getSingleOrNull();
+              .get()).firstOrNull;
           int branchId;
           if (existingBranch == null) {
             branchId = await db.into(db.branches).insert(
@@ -353,12 +340,12 @@ class SyncService {
           }
 
           // Guarda o actualiza la traza en ReferenceRoutes
-          final existingRef = await (db.select(db.referenceRoutes)
+          final existingRef = (await (db.select(db.referenceRoutes)
                 ..where((r) =>
                     r.lineId.equals(lineId) &
                     r.branchId.equals(branchId) &
                     r.direction.equals(sentido)))
-              .getSingleOrNull();
+              .get()).firstOrNull;
 
           final routeName = 'Línea $lineaNumero - $ramal ($sentido)';
 

@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AppConstants {
   static const String appName = 'LANÚS DIGITAL';
 
@@ -56,26 +58,26 @@ extension IncidentTypeX on IncidentType {
     }
   }
 
-  String get iconEmoji {
+  IconData get icon {
     switch (this) {
       case IncidentType.obra:
-        return '🚧';
+        return Icons.construction;
       case IncidentType.corte:
-        return '🚫';
+        return Icons.block;
       case IncidentType.desvio:
-        return '↪';
+        return Icons.alt_route;
       case IncidentType.transito:
-        return '🚦';
+        return Icons.traffic;
       case IncidentType.parada:
-        return '🚏';
+        return Icons.front_hand;
       case IncidentType.calzada:
-        return '🛣';
+        return Icons.report_problem;
       case IncidentType.unidad:
-        return '🚍';
+        return Icons.bus_alert;
       case IncidentType.accidente:
-        return '💥';
+        return Icons.car_crash;
       case IncidentType.otro:
-        return '📝';
+        return Icons.warning_amber;
     }
   }
 }
