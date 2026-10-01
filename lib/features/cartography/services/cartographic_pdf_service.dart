@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
@@ -9,8 +10,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
-import '../../../core/utils/geo_utils.dart';
 import '../../../core/utils/transport_utils.dart';
+import 'cartographic_projection.dart';
 import 'map_tile_composer.dart';
 
 enum CartographicSheetFormat {
@@ -110,7 +111,7 @@ class CartographicPdfService {
     return null;
   }
 
-  /// Genera la lámina cartográfica oficial de arquitectura en el formato y orientación seleccionados.
+  /// Genera la lámina cartográfica oficial de arquitectura con proyección isométrica unificada.
   static Future<Uint8List> generateSheetBytes({
     required CartographicRouteData data,
     CartographicSheetFormat format = CartographicSheetFormat.a3,
@@ -135,13 +136,24 @@ class CartographicPdfService {
     final headerHeight = isPlotterLarge ? 90.0 : 66.0;
     final caratureHeight = isPlotterLarge ? 175.0 : 118.0;
 
+    // Dimensiones exactas del contenedor del mapa
+    final mapWidth = contentWidth - 10.0;
+    final mapHeight = contentHeight - headerHeight - caratureHeight - 16.0;
+
+    // Proyector Web Mercator unificado (garantiza coincidencia exacta imagen / traza)
+    final projection = MercatorViewportProjection(
+      bounds: bounds,
+      width: mapWidth,
+      height: mapHeight,
+    );
+
     // Descarga de mosaico Mapbox (@2x Retina)
     Uint8List? basemapBytes;
     if (includeBasemap && points.isNotEmpty) {
       basemapBytes = await MapTileComposer.composeBasemap(
         bounds: bounds,
-        targetWidthPx: (contentWidth * 1.5).toInt(),
-        targetHeightPx: ((contentHeight - headerHeight - caratureHeight) * 1.5).toInt(),
+        targetWidthPx: (mapWidth * 2.0).toInt(),
+        targetHeightPx: (mapHeight * 2.0).toInt(),
         style: mapboxStyle,
       );
     }
@@ -172,7 +184,7 @@ class CartographicPdfService {
                     // 1. Encabezado Oficial Institucional con Logo
                     _buildInstitutionalHeader(data, format, headerHeight, logoBytes),
 
-                    // 2. Viewport del Plano Cartográfico con estética arquitectónica
+                    // 2. Viewport del Plano Cartográfico Isométrico
                     pw.Expanded(
                       child: pw.Container(
                         width: double.infinity,
@@ -194,15 +206,15 @@ class CartographicPdfService {
 
                             // Marcas de registro y cruces técnicas de arquitectura
                             pw.Positioned.fill(
-                              child: _buildArchitecturalCrosshairs(bounds),
+                              child: _buildArchitecturalCrosshairs(),
                             ),
 
-                            // Trazado Vectorial de Alta Definición
+                            // Trazado Vectorial de Alta Definición Proyectado con Web Mercator
                             pw.Positioned.fill(
                               child: _buildVectorPolyline(
                                 points: points,
                                 stops: data.stopPoints,
-                                bounds: bounds,
+                                projection: projection,
                                 lineColor: linePdfColor,
                               ),
                             ),
@@ -218,7 +230,7 @@ class CartographicPdfService {
                             pw.Positioned(
                               bottom: 12,
                               left: 14,
-                              child: _buildGraphicScale(bounds, contentWidth),
+                              child: _buildGraphicScale(bounds, projection),
                             ),
                           ],
                         ),
@@ -303,7 +315,7 @@ class CartographicPdfService {
                         borderRadius: pw.BorderRadius.all(pw.Radius.circular(2)),
                       ),
                       child: pw.Text(
-                        'GESTIÓN URBANA',
+                        'PLANIFICACIÓN URBANA',
                         style: pw.TextStyle(
                           color: PdfColors.white,
                           fontSize: subSize * 0.75,
@@ -372,13 +384,12 @@ class CartographicPdfService {
   }
 
   /// Reticulado y cruces de precisión técnica de arquitectura
-  static pw.Widget _buildArchitecturalCrosshairs(LatLngBounds bounds) {
+  static pw.Widget _buildArchitecturalCrosshairs() {
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
         canvas.setStrokeColor(const PdfColor(0.3, 0.4, 0.5, 0.35));
         canvas.setLineWidth(0.6);
 
-        // Cruces de mira arquitectónicas (+) en puntos de retícula
         final cols = 4;
         final rows = 3;
         final stepX = size.x / cols;
@@ -398,27 +409,22 @@ class CartographicPdfService {
         }
         canvas.strokePath();
 
-        // Marcas de registro en las 4 esquinas exteriores
         const markLen = 14.0;
         canvas.setStrokeColor(azulArquitectura);
         canvas.setLineWidth(0.9);
 
-        // Sup-Izq
         canvas.moveTo(4, 4 + markLen);
         canvas.lineTo(4, 4);
         canvas.lineTo(4 + markLen, 4);
 
-        // Sup-Der
         canvas.moveTo(size.x - 4 - markLen, 4);
         canvas.lineTo(size.x - 4, 4);
         canvas.lineTo(size.x - 4, 4 + markLen);
 
-        // Inf-Izq
         canvas.moveTo(4, size.y - 4 - markLen);
         canvas.lineTo(4, size.y - 4);
         canvas.lineTo(4 + markLen, size.y - 4);
 
-        // Inf-Der
         canvas.moveTo(size.x - 4 - markLen, size.y - 4);
         canvas.lineTo(size.x - 4, size.y - 4);
         canvas.lineTo(size.x - 4, size.y - 4 - markLen);
@@ -428,43 +434,24 @@ class CartographicPdfService {
     );
   }
 
-  /// Traza vectorial exacta con resolución infinita
+  /// Traza vectorial exacta proyectada mediante Web Mercator isométrica
   static pw.Widget _buildVectorPolyline({
     required List<LatLng> points,
     required List<LatLng> stops,
-    required LatLngBounds bounds,
+    required MercatorViewportProjection projection,
     required PdfColor lineColor,
   }) {
     if (points.isEmpty) return pw.SizedBox();
 
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
-        final w = size.x;
-        final h = size.y;
-
-        final minLon = bounds.west;
-        final maxLon = bounds.east;
-        final minLat = bounds.south;
-        final maxLat = bounds.north;
-
-        final lonSpan = (maxLon - minLon).abs();
-        final latSpan = (maxLat - minLat).abs();
-
-        if (lonSpan == 0 || latSpan == 0) return;
-
-        PdfPoint project(LatLng p) {
-          final x = ((p.longitude - minLon) / lonSpan) * w;
-          final y = ((p.latitude - minLat) / latSpan) * h;
-          return PdfPoint(x, y);
-        }
-
         // 1. Halo blanco de contraste
         canvas.setStrokeColor(PdfColors.white);
         canvas.setLineWidth(5.5);
-        final firstPt = project(points.first);
+        final firstPt = projection.projectToPdf(points.first);
         canvas.moveTo(firstPt.x, firstPt.y);
         for (int i = 1; i < points.length; i++) {
-          final pt = project(points[i]);
+          final pt = projection.projectToPdf(points[i]);
           canvas.lineTo(pt.x, pt.y);
         }
         canvas.strokePath();
@@ -474,7 +461,7 @@ class CartographicPdfService {
         canvas.setLineWidth(3.2);
         canvas.moveTo(firstPt.x, firstPt.y);
         for (int i = 1; i < points.length; i++) {
-          final pt = project(points[i]);
+          final pt = projection.projectToPdf(points[i]);
           canvas.lineTo(pt.x, pt.y);
         }
         canvas.strokePath();
@@ -484,7 +471,7 @@ class CartographicPdfService {
         canvas.setStrokeColor(PdfColors.white);
         canvas.setLineWidth(1.2);
         for (final stop in stops) {
-          final spt = project(stop);
+          final spt = projection.projectToPdf(stop);
           canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
           canvas.fillPath();
           canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
@@ -501,7 +488,7 @@ class CartographicPdfService {
         canvas.strokePath();
 
         // 5. Terminal de Destino (Granate)
-        final lastPt = project(points.last);
+        final lastPt = projection.projectToPdf(points.last);
         canvas.setFillColor(granateLanus);
         canvas.setStrokeColor(PdfColors.white);
         canvas.setLineWidth(2.0);
@@ -531,13 +518,11 @@ class CartographicPdfService {
             height: isPlotter ? 32 : 24,
             child: pw.CustomPaint(
               painter: (PdfGraphics canvas, PdfPoint size) {
-                // Círculo concéntrico técnico
                 canvas.setStrokeColor(grisLineaTecnica);
                 canvas.setLineWidth(0.6);
                 canvas.drawEllipse(size.x / 2, size.y * 0.45, size.x * 0.45, size.x * 0.45);
                 canvas.strokePath();
 
-                // Flecha Norte
                 canvas.setFillColor(azulArquitectura);
                 canvas.moveTo(size.x / 2, size.y);
                 canvas.lineTo(0, 0);
@@ -557,24 +542,33 @@ class CartographicPdfService {
     );
   }
 
-  /// Escala gráfica métrica estilo arquitecto
-  static pw.Widget _buildGraphicScale(LatLngBounds bounds, double mapWidthPoints) {
-    final metersAcross = GeoUtils.distanceMeters(
-      (bounds.north + bounds.south) / 2.0,
-      bounds.west,
-      (bounds.north + bounds.south) / 2.0,
-      bounds.east,
-    );
+  /// Escala gráfica métrica matemáticamente calibrada desde Web Mercator
+  static pw.Widget _buildGraphicScale(LatLngBounds bounds, MercatorViewportProjection projection) {
+    final meanLat = (bounds.north + bounds.south) / 2.0;
+    final latRad = meanLat * math.pi / 180.0;
+    // Metros por unidad de mundo Web Mercator a esta latitud
+    final metersPerWorldUnit = (40075016.686 * math.cos(latRad)) / 256.0;
+    // Metros por punto de PDF
+    final metersPerPoint = metersPerWorldUnit / projection.scale;
 
-    if (metersAcross <= 0) return pw.SizedBox();
+    if (metersPerPoint <= 0) return pw.SizedBox();
 
-    final metersPerPoint = metersAcross / mapWidthPoints;
+    // Determina valor redondo para la escala
     double scaleMeters = 1000.0;
-    if (metersAcross > 15000) {
+    final targetBarPoints = 100.0;
+    final approxMeters = targetBarPoints * metersPerPoint;
+
+    if (approxMeters > 15000) {
+      scaleMeters = 20000.0;
+    } else if (approxMeters > 7000) {
+      scaleMeters = 10000.0;
+    } else if (approxMeters > 3500) {
       scaleMeters = 5000.0;
-    } else if (metersAcross > 8000) {
+    } else if (approxMeters > 1500) {
       scaleMeters = 2000.0;
-    } else if (metersAcross < 3000) {
+    } else if (approxMeters > 700) {
+      scaleMeters = 1000.0;
+    } else {
       scaleMeters = 500.0;
     }
 
