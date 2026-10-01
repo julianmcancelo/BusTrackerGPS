@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'transit_controller.dart';
 import 'widgets/transit_line_chips.dart';
 import 'widgets/transit_bottom_panel.dart';
+import 'widgets/transit_lines_sheet.dart';
 import 'line_itinerary_screen.dart';
 import '../data/models/transit_models.dart';
 
@@ -106,6 +107,29 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
         ),
       );
     }
+  }
+
+  void _openLinesCatalog() {
+    final state = ref.read(transitControllerProvider);
+    final notifier = ref.read(transitControllerProvider.notifier);
+
+    TransitLinesSheet.show(
+      context,
+      lines: state.allLines,
+      enabledLineIds: state.enabledLineIds,
+      focusedLineId: state.focusedLineId,
+      onLineToggled: (id) => notifier.toggleLineVisibility(id),
+      onLineFocused: (id) {
+        notifier.focusLine(id);
+        final line = state.allLines.where((l) => l.id == id).firstOrNull;
+        _fitLineCamera(line, line?.primaryBranch);
+      },
+      onShowAll: () {
+        notifier.showAllLines();
+        _fitAllNetworkCamera();
+      },
+      onHideAll: () => notifier.hideAllLines(),
+    );
   }
 
   @override
@@ -497,6 +521,11 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
                         },
                       ),
                       IconButton(
+                        icon: const Icon(Icons.format_list_bulleted_rounded, color: Colors.blueGrey),
+                        tooltip: 'Explorar todas las líneas (${state.allLines.length})',
+                        onPressed: _openLinesCatalog,
+                      ),
+                      IconButton(
                         icon: const Icon(Icons.cloud_sync_outlined, color: Colors.blueGrey),
                         tooltip: 'Sincronizar con Lanús Digital',
                         onPressed: () async {
@@ -540,6 +569,7 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
                     notifier.showAllLines();
                     _fitAllNetworkCamera();
                   },
+                  onOpenCatalog: _openLinesCatalog,
                 ),
               ],
             ),

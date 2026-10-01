@@ -119,12 +119,21 @@ class TransitNotifier extends Notifier<TransitState> {
     state = state.copyWith(isLoading: true);
     var network = await repo.getTransitNetwork();
 
-    // Si aún no hay trazas guardadas, sincroniza automáticamente con Lanús Digital
-    if (network.isEmpty || network.every((l) => !l.hasRoutes)) {
+    // Si aún no tenemos todas las líneas oficiales de Lanús Digital (47 líneas) o faltan trazas:
+    if (network.length < 45 || network.every((l) => !l.hasRoutes)) {
       try {
         await SyncService.fetchOfficialLines(repo.db);
         network = await repo.getTransitNetwork();
       } catch (_) {}
+    } else {
+      // Sincronización en segundo plano sin bloquear para mantener la red al día
+      unawaited(() async {
+        try {
+          await SyncService.fetchOfficialLines(repo.db);
+          final updated = await repo.getTransitNetwork();
+          state = state.copyWith(allLines: updated);
+        } catch (_) {}
+      }());
     }
 
     final allIds = network.map((l) => l.id).toSet();

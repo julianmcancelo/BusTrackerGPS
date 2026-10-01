@@ -8,6 +8,7 @@ class TransitLineChips extends StatelessWidget {
   final ValueChanged<int> onLineToggled;
   final ValueChanged<int> onLineFocused;
   final VoidCallback onShowAll;
+  final VoidCallback? onOpenCatalog;
 
   const TransitLineChips({
     super.key,
@@ -17,6 +18,7 @@ class TransitLineChips extends StatelessWidget {
     required this.onLineToggled,
     required this.onLineFocused,
     required this.onShowAll,
+    this.onOpenCatalog,
   });
 
   @override
@@ -32,6 +34,32 @@ class TransitLineChips extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         children: [
+          // Botón Explorador / Lista de todas las líneas
+          if (onOpenCatalog != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ActionChip(
+                avatar: const Icon(Icons.format_list_bulleted_rounded, size: 16, color: Color(0xFF1D4ED8)),
+                label: Text(
+                  'LÍNEAS (${lines.length})',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: Color(0xFF1D4ED8),
+                  ),
+                ),
+                onPressed: onOpenCatalog,
+                backgroundColor: Colors.white.withValues(alpha: 0.95),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(
+                    color: Color(0xFF1D4ED8),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+
           // Chip "TODAS"
           Padding(
             padding: const EdgeInsets.only(right: 8),

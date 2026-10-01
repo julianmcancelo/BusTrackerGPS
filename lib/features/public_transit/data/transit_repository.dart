@@ -84,6 +84,9 @@ class TransitRepository {
       ));
     }
 
+    // Ordenamiento numérico canónico de todas las líneas (9, 10, 15, ..., 520, 527)
+    result.sort((a, b) => TransportUtils.compareLineNumbers(a.number, b.number));
+
     return result;
   }
 
