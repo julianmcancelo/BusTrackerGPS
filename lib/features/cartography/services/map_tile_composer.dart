@@ -5,18 +5,41 @@ import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 
-class MapTileComposer {
-  static const String _tileUrlTemplate = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-  static const String _osmFallbackTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+enum MapboxStyle {
+  lightArchitectural,
+  streetsColor;
 
-  /// Descarga y compone un mapa base para el Bounding Box dado con las dimensiones especificadas.
+  String get label {
+    switch (this) {
+      case MapboxStyle.lightArchitectural:
+        return 'Plano Arquitectónico (Mapbox Light)';
+      case MapboxStyle.streetsColor:
+        return 'Callejero Urbano (Mapbox Streets)';
+    }
+  }
+}
+
+class MapTileComposer {
+  static const String mapboxAccessToken =
+      'pk.eyJ1IjoianVsZWVoeiIsImEiOiJja2twYzd3bDAwMnE4MnZwMnEyMWJzZmdtIn0.fQRzvyRtqihBoT_c6vdR0A';
+
+  static const String _mapboxLightTemplate =
+      'https://api.mapbox.com/styles/v1/mapbox/light-v11/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken';
+
+  static const String _mapboxStreetsTemplate =
+      'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken';
+
+  static const String _cartoFallbackTemplate =
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+
+  /// Descarga y compone un mapa base Mapbox de alta resolución para el Bounding Box dado.
   static Future<Uint8List?> composeBasemap({
     required LatLngBounds bounds,
     required int targetWidthPx,
     required int targetHeightPx,
+    MapboxStyle style = MapboxStyle.lightArchitectural,
   }) async {
     try {
-      // Determina el zoom óptimo para cubrir el bounding box con resolución suficiente
       final zoom = _calculateOptimalZoom(bounds, targetWidthPx, targetHeightPx);
 
       final minX = _lonToTileX(bounds.west, zoom);
@@ -24,7 +47,6 @@ class MapTileComposer {
       final minY = _latToTileY(bounds.north, zoom);
       final maxY = _latToTileY(bounds.south, zoom);
 
-      // Limita la cantidad de teselas para no sobrecargar memoria ni tiempo de espera (máx 36 teselas)
       final countX = (maxX - minX + 1);
       final countY = (maxY - minY + 1);
       if (countX * countY > 40 || countX <= 0 || countY <= 0) {
@@ -34,14 +56,16 @@ class MapTileComposer {
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder);
 
-      // Fondo papel cartográfico claro
-      final bgPaint = ui.Paint()..color = const ui.Color(0xFFF8F9FA);
+      // Fondo papel plano arquitectónico
+      final bgPaint = ui.Paint()
+        ..color = style == MapboxStyle.lightArchitectural
+            ? const ui.Color(0xFFF6F7F9)
+            : const ui.Color(0xFFF1F5F9);
       canvas.drawRect(
         ui.Rect.fromLTWH(0, 0, targetWidthPx.toDouble(), targetHeightPx.toDouble()),
         bgPaint,
       );
 
-      // Bounding box en píxeles mundiales de Web Mercator al zoom calculado
       final worldLeft = _lonToWorldPx(bounds.west, zoom);
       final worldRight = _lonToWorldPx(bounds.east, zoom);
       final worldTop = _latToWorldPx(bounds.north, zoom);
@@ -54,21 +78,20 @@ class MapTileComposer {
 
       final scaleX = targetWidthPx / worldWidth;
       final scaleY = targetHeightPx / worldHeight;
-      // Usar escala uniforme para preservar aspecto cartográfico
       final scale = math.min(scaleX, scaleY);
       final offsetX = (targetWidthPx - (worldWidth * scale)) / 2.0;
       final offsetY = (targetHeightPx - (worldHeight * scale)) / 2.0;
 
-      // Descarga paralela de teselas
+      // Descarga paralela de teselas Mapbox Retina (@2x)
       final tileFutures = <Future<_TileData?>>[];
       for (int tx = minX; tx <= maxX; tx++) {
         for (int ty = minY; ty <= maxY; ty++) {
-          tileFutures.add(_fetchTile(tx, ty, zoom));
+          tileFutures.add(_fetchTile(tx, ty, zoom, style));
         }
       }
 
       final downloadedTiles = await Future.wait(tileFutures).timeout(
-        const Duration(seconds: 8),
+        const Duration(seconds: 10),
         onTimeout: () => [],
       );
 
@@ -96,9 +119,13 @@ class MapTileComposer {
     }
   }
 
-  static Future<_TileData?> _fetchTile(int x, int y, int z) async {
+  static Future<_TileData?> _fetchTile(int x, int y, int z, MapboxStyle style) async {
     try {
-      final url = _tileUrlTemplate
+      final template = style == MapboxStyle.lightArchitectural
+          ? _mapboxLightTemplate
+          : _mapboxStreetsTemplate;
+
+      final url = template
           .replaceAll('{z}', z.toString())
           .replaceAll('{x}', x.toString())
           .replaceAll('{y}', y.toString());
@@ -109,16 +136,16 @@ class MapTileComposer {
         response = await client.get(
           Uri.parse(url),
           headers: {'User-Agent': 'LanusDigitalCartografia/1.0'},
-        ).timeout(const Duration(seconds: 4));
+        ).timeout(const Duration(seconds: 5));
       } catch (_) {
-        final fallbackUrl = _osmFallbackTemplate
+        final fallbackUrl = _cartoFallbackTemplate
             .replaceAll('{z}', z.toString())
             .replaceAll('{x}', x.toString())
             .replaceAll('{y}', y.toString());
         response = await client.get(
           Uri.parse(fallbackUrl),
           headers: {'User-Agent': 'LanusDigitalCartografia/1.0'},
-        ).timeout(const Duration(seconds: 4));
+        ).timeout(const Duration(seconds: 5));
       } finally {
         client.close();
       }
