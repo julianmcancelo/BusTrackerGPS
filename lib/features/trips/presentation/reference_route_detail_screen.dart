@@ -41,6 +41,11 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
           _points = points;
           _isLoading = false;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(milliseconds: 250), () {
+            if (mounted) _fitCamera();
+          });
+        });
       }
     } else {
       if (mounted) {
@@ -50,14 +55,25 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
   }
 
   void _fitCamera() {
-    if (_points.isEmpty) return;
-    final bounds = LatLngBounds.fromPoints(_points);
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: bounds,
-        padding: const EdgeInsets.all(40),
-      ),
-    );
+    if (!mounted || _points.isEmpty) return;
+    try {
+      if (_points.length == 1) {
+        _mapController.move(_points.first, 15.0);
+        return;
+      }
+      final bounds = LatLngBounds.fromPoints(_points);
+      if ((bounds.north - bounds.south).abs() < 0.0001 &&
+          (bounds.east - bounds.west).abs() < 0.0001) {
+        _mapController.move(_points.first, 15.0);
+        return;
+      }
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(36),
+        ),
+      );
+    } catch (_) {}
   }
 
   Future<void> _startCaptureFromReference() async {
@@ -122,7 +138,7 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: polyColor.withOpacity(0.12),
+                          color: polyColor.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.cloud_done_rounded, color: polyColor, size: 24),
@@ -146,7 +162,7 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: polyColor.withOpacity(0.15),
+                          color: polyColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -201,60 +217,112 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: _points.isNotEmpty ? _points.first : const LatLng(-34.700, -58.380),
-                  initialZoom: 14.0,
-                  onMapReady: _fitCamera,
-                ),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
-                  ),
-                  if (_points.isNotEmpty)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _points,
-                          strokeWidth: 5.5,
-                          color: polyColor,
-                        ),
-                      ],
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _points.isNotEmpty
+                          ? _points[_points.length ~/ 2]
+                          : const LatLng(-34.700, -58.380),
+                      initialZoom: _points.isNotEmpty ? 13.5 : 12.0,
+                      onMapReady: () {
+                        Future.delayed(const Duration(milliseconds: 250), () {
+                          if (mounted) _fitCamera();
+                        });
+                      },
                     ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.bitacoragps.app.bitacora_gps',
+                      ),
+                      if (_points.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _points,
+                              strokeWidth: 5.5,
+                              color: polyColor,
+                            ),
+                          ],
+                        ),
+                      if (_points.isNotEmpty)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _points.first,
+                              width: 32,
+                              height: 32,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade600,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                ),
+                                child: const Icon(Icons.flag, color: Colors.white, size: 16),
+                              ),
+                            ),
+                            Marker(
+                              point: _points.last,
+                              width: 32,
+                              height: 32,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade600,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                ),
+                                child: const Icon(Icons.sports_score, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+
+                  // Floating re-center button
                   if (_points.isNotEmpty)
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _points.first,
-                          width: 32,
-                          height: 32,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade600,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                            ),
-                            child: const Icon(Icons.flag, color: Colors.white, size: 16),
-                          ),
+                    Positioned(
+                      right: 14,
+                      bottom: 14,
+                      child: FloatingActionButton.small(
+                        heroTag: 'recenter_route_fab',
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blue.shade800,
+                        onPressed: _fitCamera,
+                        tooltip: 'Encuadrar traza',
+                        child: const Icon(Icons.center_focus_strong, size: 20),
+                      ),
+                    ),
+
+                  // Empty points banner
+                  if (_points.isEmpty)
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        Marker(
-                          point: _points.last,
-                          width: 32,
-                          height: 32,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade600,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.amber, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Esta traza aún no contiene coordenadas geográficas trazadas en el servidor.',
+                                style: TextStyle(color: Colors.white, fontSize: 12),
+                              ),
                             ),
-                            child: const Icon(Icons.sports_score, color: Colors.white, size: 16),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                 ],
               ),

@@ -68,12 +68,12 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
     if (!state.isShorebirdAvailable) {
       state = state.copyWith(
         status: OtaStatus.unavailable,
-        message: 'Shorebird OTA activo para producción móvil (ARM64). Para emulador/PC se utiliza el actualizador de GitHub.',
+        message: 'Shorebird OTA opera en segundo plano en el APK instalado en Android (ARM64). En PC o emulador use la actualización de GitHub.',
       );
       return;
     }
 
-    state = state.copyWith(status: OtaStatus.checking, message: 'Buscando actualizaciones OTA...');
+    state = state.copyWith(status: OtaStatus.checking, message: 'Consultando servidores de Shorebird...');
 
     try {
       final updateTrack = await _shorebird.checkForUpdate();
@@ -84,7 +84,7 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
         } else {
           state = state.copyWith(
             status: OtaStatus.updateAvailable,
-            message: 'Nueva actualización parche OTA disponible',
+            message: 'Nuevo parche OTA detectado en la nube. Listo para instalar.',
           );
         }
       } else {
@@ -92,13 +92,15 @@ class OtaUpdateNotifier extends Notifier<OtaState> {
         state = state.copyWith(
           status: OtaStatus.idle,
           currentPatch: patch?.number,
-          message: patch != null ? 'Aplicación actualizada (Parche #${patch.number})' : 'Aplicación en versión oficial',
+          message: patch != null
+              ? 'Aplicación al día con el Parche #${patch.number} activo.'
+              : 'Aplicación al día con la versión oficial base 1.0.19+19. El motor OTA está conectado y esperando nuevos parches.',
         );
       }
     } catch (e) {
       state = state.copyWith(
         status: OtaStatus.error,
-        message: 'Error al verificar actualizaciones: $e',
+        message: 'No se pudo conectar con el servidor de parches: $e',
       );
     }
   }

@@ -276,86 +276,90 @@ class _TripListScreenState extends ConsumerState<TripListScreen> with SingleTick
             return Card(
               elevation: 1,
               margin: const EdgeInsets.symmetric(vertical: 4),
+              clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 36,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isIda
-                              ? [const Color(0xFF0284C7), const Color(0xFF0369A1)]
-                              : [const Color(0xFFD97706), const Color(0xFFB45309)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              child: InkWell(
+                onTap: () => context.push('/reference-routes/${r.id}'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isIda
+                                ? [const Color(0xFF0284C7), const Color(0xFF0369A1)]
+                                : [const Color(0xFFD97706), const Color(0xFFB45309)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item.line.number,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
+                        child: Text(
+                          item.line.number,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  item.branch.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: (isIda ? Colors.blue : Colors.orange).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  r.direction,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: isIda ? Colors.blue.shade800 : Colors.orange.shade800,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.branch.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${GeoUtils.formatDistance(item.distanceMeters)} · ${item.pointCount} puntos GPS',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                          ),
-                        ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: (isIda ? Colors.blue : Colors.orange).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    r.direction,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: isIda ? Colors.blue.shade800 : Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${GeoUtils.formatDistance(item.distanceMeters)} · ${item.pointCount} puntos GPS',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    IconButton(
-                      icon: const Icon(Icons.map_outlined, color: Color(0xFF0284C7), size: 20),
-                      tooltip: 'Ver traza en mapa',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        context.push('/reference-routes/${r.id}');
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+                        tooltip: 'Ver traza en mapa',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          context.push('/reference-routes/${r.id}');
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

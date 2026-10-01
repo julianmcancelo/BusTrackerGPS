@@ -154,9 +154,9 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
+              Navigator.pop(ctx);
               await _mapsService.deleteRegion(region.id);
               if (mounted) {
-                Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Mapa "${region.name}" eliminado')),
                 );
@@ -196,9 +196,9 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
           }
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 85),
             children: [
-              // Download Progress Card
+              // Active Download Card
               if (_isDownloading)
                 Card(
                   elevation: 2,
@@ -218,52 +218,63 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                             const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2.2),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 _currentDownloadingName,
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Text(
                               '${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0284C7),
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: _downloadProgress,
                             minHeight: 6,
+                            backgroundColor: Colors.blue.shade100,
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0284C7)),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           _statusText,
                           style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
                 ),
 
-              // Overview Header Card
+              // Storage Overview Card
               Card(
                 elevation: 1,
+                margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(9),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0284C7).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
@@ -276,62 +287,45 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Almacenamiento Local',
+                              'Almacenamiento Offline',
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               '${downloadedRegions.length} mapas guardados · ${totalMB.toStringAsFixed(1)} MB en uso',
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                          minimumSize: const Size(0, 32),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_circle_outline, size: 12, color: Colors.green),
-                            SizedBox(width: 4),
-                            Text('Listo Offline', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                        onPressed: _showCustomRegionDialog,
+                        icon: const Icon(Icons.add, size: 14),
+                        label: const Text('ZONA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 10),
-              // Preconfigured Regions Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.layers_outlined, size: 15, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Text(
-                      'ZONAS PRECONFIGURADAS PARA RELEVAMIENTO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
+              // Preconfigured Section Header
+              _buildSectionHeader('ZONAS RECOMENDADAS PARA RELEVAMIENTO', Icons.layers_outlined),
+              const SizedBox(height: 6),
 
               _buildQuickDownloadCard(
                 title: 'Lanús Centro y Este',
-                subtitle: 'Estación Lanús, Gerli, Monte Chingolo (Zoom 12-16)',
+                description: 'Estación Lanús, Gerli, Monte Chingolo y vías troncales.',
+                zoomRange: 'Zoom 12-16',
                 sizeEstimate: '~35 MB',
                 isDownloaded: regions.any((r) => r.name.contains('Centro') && r.isDownloaded),
                 onDownload: () => _startDownloadRegion(
@@ -347,7 +341,8 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
 
               _buildQuickDownloadCard(
                 title: 'Lanús Oeste y R. de Escalada',
-                subtitle: 'Valle Central, Alsina, Remedios de Escalada (Zoom 12-16)',
+                description: 'Valle Central, Alsina, Caraza y Remedios de Escalada.',
+                zoomRange: 'Zoom 12-16',
                 sizeEstimate: '~40 MB',
                 isDownloaded: regions.any((r) => r.name.contains('Oeste') && r.isDownloaded),
                 onDownload: () => _startDownloadRegion(
@@ -363,7 +358,8 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
 
               _buildQuickDownloadCard(
                 title: 'Corredor Sur Completo (AMBA)',
-                subtitle: 'Avellaneda, Lanús, Lomas de Zamora y Quilmes (Zoom 11-15)',
+                description: 'Avellaneda, Lanús, Lomas de Zamora, Quilmes y accesos principales.',
+                zoomRange: 'Zoom 11-15',
                 sizeEstimate: '~85 MB',
                 isDownloaded: regions.any((r) => r.name.contains('Corredor') && r.isDownloaded),
                 onDownload: () => _startDownloadRegion(
@@ -377,41 +373,24 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
-              // Downloaded Maps List Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.folder_outlined, size: 15, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Text(
-                      'MAPAS DESCARGADOS (${downloadedRegions.length})',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 14),
+              // Downloaded Maps Header
+              _buildSectionHeader('MAPAS GUARDADOS (${downloadedRegions.length})', Icons.folder_outlined),
+              const SizedBox(height: 6),
 
               if (downloadedRegions.isEmpty)
                 Card(
                   elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                     child: Column(
                       children: [
-                        Icon(Icons.map_outlined, size: 36, color: Colors.grey.shade400),
+                        Icon(Icons.cloud_off_outlined, size: 36, color: Colors.grey.shade400),
                         const SizedBox(height: 8),
                         Text(
                           'No hay zonas descargadas',
@@ -419,7 +398,7 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Descarga una de las zonas preconfiguradas arriba para trabajar sin cobertura.',
+                          'Descarga una de las zonas recomendadas para navegar y relevar sin conexión.',
                           style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                           textAlign: TextAlign.center,
                         ),
@@ -431,35 +410,52 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                 ...downloadedRegions.map((r) {
                   final mbSize = r.sizeBytes != null ? (r.sizeBytes! / (1024 * 1024)).toStringAsFixed(1) : '?';
                   return Card(
-                    elevation: 1,
+                    elevation: 0.8,
                     margin: const EdgeInsets.only(bottom: 6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
+                      side: BorderSide(color: Colors.grey.withValues(alpha: 0.14)),
                     ),
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                      leading: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.check, color: Colors.green, size: 16),
-                      ),
-                      title: Text(
-                        r.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      subtitle: Text(
-                        'Zoom ${r.minZoom}-${r.maxZoom} · $mbSize MB',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                        tooltip: 'Eliminar',
-                        onPressed: () => _confirmDeleteRegion(r),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  r.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Zoom ${r.minZoom}-${r.maxZoom} · $mbSize MB',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            tooltip: 'Eliminar del dispositivo',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _confirmDeleteRegion(r),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -472,55 +468,149 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
     );
   }
 
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: Colors.grey.shade600),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade600,
+                letterSpacing: 0.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: Colors.grey.shade700),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickDownloadCard({
     required String title,
-    required String subtitle,
+    required String description,
+    required String zoomRange,
     required String sizeEstimate,
     required bool isDownloaded,
     required VoidCallback onDownload,
   }) {
     return Card(
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 6),
+      elevation: 0.8,
+      margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isDownloaded ? Colors.green.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.12),
+          color: isDownloaded ? Colors.green.withValues(alpha: 0.35) : Colors.grey.withValues(alpha: 0.15),
         ),
       ),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: Icon(
-          isDownloaded ? Icons.cloud_done : Icons.cloud_download_outlined,
-          color: isDownloaded ? Colors.green : const Color(0xFF0284C7),
-          size: 20,
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-        subtitle: Text(
-          '$subtitle · $sizeEstimate',
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
-        trailing: isDownloaded
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: (isDownloaded ? Colors.green : const Color(0xFF0284C7)).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    isDownloaded ? Icons.cloud_done : Icons.cloud_download_outlined,
+                    size: 18,
+                    color: isDownloaded ? Colors.green : const Color(0xFF0284C7),
+                  ),
                 ),
-                child: const Text('Descargado', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
-              )
-            : FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  visualDensity: VisualDensity.compact,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                onPressed: _isDownloading ? null : onDownload,
-                child: const Text('BAJAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              ),
+                const SizedBox(width: 8),
+                if (isDownloaded)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check, size: 12, color: Colors.green),
+                        SizedBox(width: 4),
+                        Text(
+                          'DESCARGADO',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                      minimumSize: const Size(0, 30),
+                    ),
+                    onPressed: _isDownloading ? null : onDownload,
+                    child: const Text('DESCARGAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              description,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.25),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                _buildMiniChip(Icons.zoom_in, zoomRange),
+                _buildMiniChip(Icons.sd_storage_outlined, sizeEstimate),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

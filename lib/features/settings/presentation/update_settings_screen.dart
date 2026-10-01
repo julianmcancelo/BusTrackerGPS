@@ -46,6 +46,25 @@ class UpdateSettingsScreen extends ConsumerWidget {
               Builder(
                 builder: (context) {
                   final otaState = ref.watch(otaUpdateProvider);
+                  final isAvail = otaState.isShorebirdAvailable;
+                  final hasPatch = otaState.currentPatch != null;
+                  final isError = otaState.status == OtaStatus.error;
+                  final isRestart = otaState.status == OtaStatus.readyToRestart;
+
+                  final statusColor = !isAvail
+                      ? Colors.grey
+                      : isError
+                          ? Colors.red
+                          : isRestart
+                              ? Colors.amber.shade800
+                              : const Color(0xFF059669);
+
+                  final badgeText = !isAvail
+                      ? 'MODO DEV / EMULADOR'
+                      : hasPatch
+                          ? 'PARCHE #${otaState.currentPatch} ACTIVO'
+                          : 'VERSIÓN OFICIAL 1.0.19+19';
+
                   return Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -59,10 +78,10 @@ class UpdateSettingsScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
+                                  color: statusColor.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.cloud_download, color: Colors.blue, size: 24),
+                                child: Icon(Icons.cloud_sync_outlined, color: statusColor, size: 24),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -70,42 +89,108 @@ class UpdateSettingsScreen extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Motor de Parches Shorebird',
+                                      'Motor de Parches Shorebird OTA',
                                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      'Estado: ${otaState.status.name.toUpperCase()}',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                      isAvail
+                                          ? 'Canal activo: Listo para recibir mejoras sin reinstalar APK'
+                                          : 'Inactivo en emulador (activo en APK instalado en celular)',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                                     ),
                                   ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  badgeText,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: statusColor,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           if (otaState.message != null) ...[
                             const SizedBox(height: 12),
-                            Text(
-                              otaState.message!,
-                              style: TextStyle(fontSize: 12, color: Colors.red.shade800),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: (isError
+                                        ? Colors.red
+                                        : isRestart
+                                            ? Colors.amber
+                                            : Colors.blue)
+                                    .withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: (isError
+                                          ? Colors.red
+                                          : isRestart
+                                              ? Colors.amber
+                                              : Colors.blue)
+                                      .withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isError
+                                        ? Icons.error_outline
+                                        : isRestart
+                                            ? Icons.restart_alt
+                                            : Icons.info_outline,
+                                    size: 16,
+                                    color: isError
+                                        ? Colors.red.shade800
+                                        : isRestart
+                                            ? Colors.amber.shade900
+                                            : Colors.blue.shade800,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      otaState.message!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isError
+                                            ? Colors.red.shade900
+                                            : isRestart
+                                                ? Colors.amber.shade900
+                                                : Colors.blue.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                           const SizedBox(height: 14),
                           FilledButton.icon(
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                              backgroundColor: Colors.blue.shade800,
+                              minimumSize: const Size.fromHeight(46),
+                              backgroundColor: const Color(0xFF0284C7),
                             ),
                             onPressed: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
                                 ? null
                                 : () => ref.read(otaUpdateProvider.notifier).checkForUpdates(),
                             icon: otaState.status == OtaStatus.checking || otaState.status == OtaStatus.downloading
                                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.sync),
+                                : const Icon(Icons.sync, size: 20),
                             label: Text(
                               otaState.status == OtaStatus.checking
                                   ? 'BUSCANDO PARCHES...'
                                   : (otaState.status == OtaStatus.downloading ? 'DESCARGANDO PARCHE...' : 'BUSCAR PARCHES OTA EN LA NUBE'),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                           ),
                         ],

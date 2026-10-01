@@ -131,56 +131,129 @@ class GeoUtils {
     return '$mm:$ss';
   }
 
+  static LatLng _normalizeCoordinate(double a, double b, {bool isStandardGeoJson = true}) {
+    // GeoJSON default: a is longitude (X), b is latitude (Y)
+    double lon = isStandardGeoJson ? a : b;
+    double lat = isStandardGeoJson ? b : a;
+
+    // Smart coordinate swap detection for Argentina / AMBA region:
+    // Typical latitude in Argentina: -56.0 to -21.0 (Lanús: ~ -34.70)
+    // Typical longitude in Argentina: -74.0 to -53.0 (Lanús: ~ -58.39)
+    if (lon >= -56.0 && lon <= -21.0 && lat >= -75.0 && lat <= -53.0) {
+      // Coordinates were inverted as [lat, lon] instead of [lon, lat]
+      final temp = lat;
+      lat = lon;
+      lon = temp;
+    } else if (lat < -90.0 || lat > 90.0) {
+      // Out of latitude range, swap
+      final temp = lat;
+      lat = lon;
+      lon = temp;
+    }
+
+    lat = lat.clamp(-90.0, 90.0);
+    lon = lon.clamp(-180.0, 180.0);
+
+    return LatLng(lat, lon);
+  }
+
   static List<LatLng> parseGeoJsonCoordinates(dynamic data) {
     if (data == null) return [];
     try {
       dynamic jsonObj = data;
       if (data is String) {
-        if (data.trim().isEmpty) return [];
-        jsonObj = jsonDecode(data);
+        final trimmed = data.trim();
+        if (trimmed.isEmpty || trimmed == 'null' || trimmed == '{}' || trimmed == '[]') return [];
+        jsonObj = jsonDecode(trimmed);
+        // Handle double-encoded JSON string
+        if (jsonObj is String && (jsonObj.startsWith('{') || jsonObj.startsWith('['))) {
+          jsonObj = jsonDecode(jsonObj);
+        }
       }
 
       final points = <LatLng>[];
 
+      void addPointFromList(List coords, {bool isStandardGeoJson = true}) {
+        if (coords.length >= 2) {
+          final a = (coords[0] as num).toDouble();
+          final b = (coords[1] as num).toDouble();
+          points.add(_normalizeCoordinate(a, b, isStandardGeoJson: isStandardGeoJson));
+        }
+      }
+
       void extractFromGeometry(Map<String, dynamic> geom) {
-        final type = geom['type']?.toString().toUpperCase();
-        final coords = geom['coordinates'];
+        final type = (geom['type'] ?? '').toString().toUpperCase();
+        final coords = geom['coordinates'] ?? geom['points'] ?? geom['puntos'] ?? geom['trazas'] ?? geom['latlngs'];
         if (coords is List) {
-          if (type == 'LINESTRING') {
+          if (type == 'LINESTRING' || type.isEmpty) {
             for (final c in coords) {
-              if (c is List && c.length >= 2) {
-                final lon = (c[0] as num).toDouble();
-                final lat = (c[1] as num).toDouble();
-                points.add(LatLng(lat, lon));
+              if (c is List) {
+                addPointFromList(c, isStandardGeoJson: true);
+              } else if (c is Map) {
+                final lat = (c['lat'] ?? c['latitude'] ?? c['y'] as num?)?.toDouble();
+                final lon = (c['lon'] ?? c['lng'] ?? c['longitude'] ?? c['x'] as num?)?.toDouble();
+                if (lat != null && lon != null) {
+                  points.add(_normalizeCoordinate(lon, lat, isStandardGeoJson: true));
+                }
               }
             }
-          } else if (type == 'MULTILINESTRING') {
+          } else if (type == 'MULTILINESTRING' || type == 'POLYGON') {
             for (final line in coords) {
               if (line is List) {
                 for (final c in line) {
-                  if (c is List && c.length >= 2) {
-                    final lon = (c[0] as num).toDouble();
-                    final lat = (c[1] as num).toDouble();
-                    points.add(LatLng(lat, lon));
+                  if (c is List) {
+                    addPointFromList(c, isStandardGeoJson: true);
                   }
                 }
               }
             }
+          } else if (type == 'POINT') {
+            addPointFromList(coords, isStandardGeoJson: true);
           }
         }
       }
 
       if (jsonObj is Map<String, dynamic>) {
-        if (jsonObj['type'] == 'FeatureCollection' && jsonObj['features'] is List) {
+        final type = (jsonObj['type'] ?? '').toString();
+        if (type == 'FeatureCollection' && jsonObj['features'] is List) {
           for (final f in jsonObj['features']) {
-            if (f is Map<String, dynamic> && f['geometry'] is Map<String, dynamic>) {
-              extractFromGeometry(f['geometry'] as Map<String, dynamic>);
+            if (f is Map<String, dynamic>) {
+              if (f['geometry'] is Map<String, dynamic>) {
+                extractFromGeometry(f['geometry'] as Map<String, dynamic>);
+              } else if (f.containsKey('coordinates')) {
+                extractFromGeometry(f);
+              }
             }
           }
-        } else if (jsonObj['type'] == 'Feature' && jsonObj['geometry'] is Map<String, dynamic>) {
+        } else if (type == 'Feature' && jsonObj['geometry'] is Map<String, dynamic>) {
           extractFromGeometry(jsonObj['geometry'] as Map<String, dynamic>);
-        } else if (jsonObj.containsKey('coordinates')) {
+        } else if (jsonObj.containsKey('coordinates') || jsonObj.containsKey('points') || jsonObj.containsKey('trazas')) {
           extractFromGeometry(jsonObj);
+        } else if (jsonObj['geometry'] is Map<String, dynamic>) {
+          extractFromGeometry(jsonObj['geometry'] as Map<String, dynamic>);
+        }
+      } else if (jsonObj is List) {
+        for (final item in jsonObj) {
+          if (item is List) {
+            // Nested or flat coordinate pair
+            if (item.isNotEmpty && item[0] is List) {
+              for (final sub in item) {
+                if (sub is List) addPointFromList(sub);
+              }
+            } else {
+              addPointFromList(item);
+            }
+          } else if (item is Map<String, dynamic>) {
+            if (item.containsKey('geometry')) {
+              extractFromGeometry(item['geometry'] as Map<String, dynamic>);
+            } else {
+              final lat = (item['lat'] ?? item['latitude'] ?? item['y'] as num?)?.toDouble();
+              final lon = (item['lon'] ?? item['lng'] ?? item['longitude'] ?? item['x'] as num?)?.toDouble();
+              if (lat != null && lon != null) {
+                points.add(_normalizeCoordinate(lon, lat, isStandardGeoJson: true));
+              }
+            }
+          }
         }
       }
 
