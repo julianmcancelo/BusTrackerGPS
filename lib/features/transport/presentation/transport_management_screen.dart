@@ -266,6 +266,11 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                   onPressed: _syncLanusDigital,
                 ),
           IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Ver Mapa de Transporte',
+            onPressed: () => context.go('/public-transit'),
+          ),
+          IconButton(
             icon: const Icon(Icons.timer_outlined),
             tooltip: 'Auditoría de Frecuencias',
             onPressed: () => context.push('/frequency'),

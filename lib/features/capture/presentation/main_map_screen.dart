@@ -624,9 +624,19 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                       ),
                     ),
                     ListTile(
+                      leading: const Icon(Icons.alt_route, color: Color(0xFF0284C7)),
+                      title: const Text('Transporte Público (Red y Mapa)', style: TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: const Text('Visor interactivo de colectivos, trazas y paradas', style: TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/public-transit');
+                      },
+                    ),
+                    ListTile(
                       leading: const Icon(Icons.directions_bus_filled, color: Colors.teal),
-                      title: const Text('Líneas y Ramales (520 - 527)'),
-                      subtitle: Text('${_lines.length} líneas operativas', style: const TextStyle(fontSize: 11)),
+                      title: const Text('Gestión de Líneas y Ramales'),
+                      subtitle: Text('${_lines.length} líneas operativas · Carga y sincronización', style: const TextStyle(fontSize: 11)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       onTap: () {
                         Navigator.pop(context);

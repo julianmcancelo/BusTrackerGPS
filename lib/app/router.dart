@@ -11,6 +11,7 @@ import '../features/settings/presentation/settings_screen.dart';
 import '../features/frequency/presentation/frequency_list_screen.dart';
 import '../features/frequency/presentation/frequency_session_screen.dart';
 import '../features/frequency/presentation/frequency_report_screen.dart';
+import '../features/public_transit/presentation/transit_map_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -71,6 +72,11 @@ final appRouter = GoRouter(
       path: '/transport',
       name: 'transport',
       builder: (context, state) => const TransportManagementScreen(),
+    ),
+    GoRoute(
+      path: '/public-transit',
+      name: 'public_transit',
+      builder: (context, state) => const TransitMapScreen(),
     ),
     GoRoute(
       path: '/maps',
