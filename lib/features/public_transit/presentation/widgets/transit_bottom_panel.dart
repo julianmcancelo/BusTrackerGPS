@@ -11,6 +11,7 @@ class TransitBottomPanel extends StatelessWidget {
   final VoidCallback onFitCamera;
   final VoidCallback onViewItinerary;
   final VoidCallback onAdminLines;
+  final VoidCallback? onPrintSheet;
 
   const TransitBottomPanel({
     super.key,
@@ -23,6 +24,7 @@ class TransitBottomPanel extends StatelessWidget {
     required this.onFitCamera,
     required this.onViewItinerary,
     required this.onAdminLines,
+    this.onPrintSheet,
   });
 
   @override
@@ -292,6 +294,18 @@ class TransitBottomPanel extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onPrintSheet != null) ...[
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: onPrintSheet,
+                  tooltip: 'Imprimir Plano Cartográfico Oficial (A0-A4)',
+                  style: IconButton.styleFrom(
+                    padding: const EdgeInsets.all(12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.print_outlined, size: 20),
+                ),
+              ],
             ],
           ),
         ],

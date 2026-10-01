@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'transit_controller.dart';
 import '../data/models/transit_models.dart';
+import '../../cartography/presentation/cartographic_export_dialog.dart';
+import '../../cartography/services/cartographic_pdf_service.dart';
 
 class LineItineraryScreen extends ConsumerStatefulWidget {
   const LineItineraryScreen({super.key});
@@ -61,6 +63,31 @@ class _LineItineraryScreenState extends ConsumerState<LineItineraryScreen>
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Imprimir Plano Cartográfico Oficial (A0-A4)',
+            onPressed: () {
+              final isIda = _tabController.index == 0;
+              final points = isIda ? branch.idaPoints : branch.vueltaPoints;
+              final distKm = isIda ? branch.idaDistanceKm : branch.vueltaDistanceKm;
+
+              final routeData = CartographicRouteData(
+                lineNumber: line.number,
+                lineName: line.name,
+                branchName: branch.branch.name,
+                direction: isIda ? 'IDA' : 'VUELTA',
+                polylinePoints: points.isNotEmpty ? points : (branch.idaPoints + branch.vueltaPoints),
+                stopPoints: state.stops.map((s) => s.position).toList(),
+                distanceKm: distKm > 0 ? distKm : 10.0,
+                date: DateTime.now(),
+                routeNotes: 'Itinerario Oficial · Municipio de Lanús',
+              );
+
+              CartographicExportDialog.show(context, routeData: routeData);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,

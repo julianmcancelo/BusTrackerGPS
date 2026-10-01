@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../data/trips_repository.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../capture/presentation/capture_notifier.dart';
+import '../../cartography/presentation/cartographic_export_dialog.dart';
+import '../../cartography/services/cartographic_pdf_service.dart';
 
 class ReferenceRouteDetailScreen extends ConsumerStatefulWidget {
   final int routeId;
@@ -118,6 +120,24 @@ class _ReferenceRouteDetailScreenState extends ConsumerState<ReferenceRouteDetai
             icon: const Icon(Icons.zoom_in_map),
             tooltip: 'Ajustar mapa',
             onPressed: _fitCamera,
+          ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Imprimir Plano Cartográfico Oficial (A0-A4)',
+            onPressed: () {
+              final distMeters = GeoUtils.calculatePolylineDistanceMeters(_points);
+              final routeData = CartographicRouteData(
+                lineNumber: line.number,
+                lineName: line.name,
+                branchName: branch.name,
+                direction: r.direction,
+                polylinePoints: _points,
+                distanceKm: distMeters / 1000.0,
+                date: r.createdAt,
+                routeNotes: 'Traza Oficial Georreferenciada · Municipio de Lanús',
+              );
+              CartographicExportDialog.show(context, routeData: routeData);
+            },
           ),
         ],
       ),

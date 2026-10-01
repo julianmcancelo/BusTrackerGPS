@@ -11,6 +11,8 @@ import '../../export/data/export_service.dart';
 import '../../../database/database.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../capture/presentation/capture_notifier.dart';
+import '../../cartography/presentation/cartographic_export_dialog.dart';
+import '../../cartography/services/cartographic_pdf_service.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -88,6 +90,33 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     await ExportService.shareFile(zipFile, text: 'Recorrido ${_details!.line.number} ZIP');
   }
 
+  void _exportCartographicSheet() {
+    if (_details == null) return;
+    final validPoints = _points
+        .where((p) => p.quality != 'OUTLIER')
+        .map((p) => LatLng(p.latitude, p.longitude))
+        .toList();
+
+    final stopPoints = _stops.map((s) => LatLng(s.latitude, s.longitude)).toList();
+
+    final routeData = CartographicRouteData(
+      lineNumber: _details!.line.number,
+      lineName: _details!.line.name,
+      branchName: _details!.branch.name,
+      direction: _details!.trip.direction,
+      polylinePoints: validPoints,
+      stopPoints: stopPoints,
+      distanceKm: _details!.trip.distanceMeters / 1000.0,
+      inspectorName: _details!.trip.driverName,
+      internalNumber: _details!.trip.internalNumber,
+      domain: _details!.trip.domain,
+      date: _details!.trip.startedAt,
+      routeNotes: _details!.trip.notes ?? 'Relevamiento de Campo Oficial · Bitácora GPS Lanús',
+    );
+
+    CartographicExportDialog.show(context, routeData: routeData);
+  }
+
   Future<void> _confirmDelete() async {
     if (_details == null) return;
     final confirmed = await showDialog<bool>(
@@ -153,6 +182,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         appBar: AppBar(
           title: Text('${line.number} · ${branch.name} (${t.direction})'),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.print_outlined),
+              onPressed: _exportCartographicSheet,
+              tooltip: 'Imprimir Lámina Cartográfica Oficial (A0-A4)',
+            ),
             IconButton(
               icon: const Icon(Icons.share),
               onPressed: _exportZip,

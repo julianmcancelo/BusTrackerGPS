@@ -10,6 +10,8 @@ import 'widgets/transit_bottom_panel.dart';
 import 'widgets/transit_lines_sheet.dart';
 import 'line_itinerary_screen.dart';
 import '../data/models/transit_models.dart';
+import '../../cartography/presentation/cartographic_export_dialog.dart';
+import '../../cartography/services/cartographic_pdf_service.dart';
 
 class TransitMapScreen extends ConsumerStatefulWidget {
   const TransitMapScreen({super.key});
@@ -702,6 +704,39 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
                 );
               },
               onAdminLines: () => context.push('/transport'),
+              onPrintSheet: () {
+                if (focusedLine == null) return;
+                final branch = focusedBranch ?? focusedLine.primaryBranch;
+                final points = <LatLng>[];
+                if (state.directionFilter == TransitDirectionFilter.ida || state.directionFilter == TransitDirectionFilter.both) {
+                  points.addAll(branch?.idaPoints ?? []);
+                }
+                if (state.directionFilter == TransitDirectionFilter.vuelta || (state.directionFilter == TransitDirectionFilter.both && points.isEmpty)) {
+                  points.addAll(branch?.vueltaPoints ?? []);
+                }
+                if (points.isEmpty && branch != null) {
+                  points.addAll(branch.idaPoints);
+                  points.addAll(branch.vueltaPoints);
+                }
+
+                final distKm = (branch != null && branch.totalDistanceKm > 0)
+                    ? branch.totalDistanceKm
+                    : (points.length * 0.05);
+
+                final routeData = CartographicRouteData(
+                  lineNumber: focusedLine.number,
+                  lineName: focusedLine.name,
+                  branchName: branch?.branch.name ?? 'Principal',
+                  direction: state.directionFilter.label,
+                  polylinePoints: points,
+                  stopPoints: state.stops.map((s) => s.position).toList(),
+                  distanceKm: distKm,
+                  date: DateTime.now(),
+                  routeNotes: 'Red de Transporte Público Oficial · Municipio de Lanús',
+                );
+
+                CartographicExportDialog.show(context, routeData: routeData);
+              },
             ),
           ),
         ],
