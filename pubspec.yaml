@@ -62,6 +62,8 @@ dependencies:
   open_filex: ^4.7.0
   package_info_plus: ^10.2.1
   shared_preferences: ^2.5.5
+  pdf: ^3.11.1
+  printing: ^5.14.2
 
 dev_dependencies:
   flutter_test:

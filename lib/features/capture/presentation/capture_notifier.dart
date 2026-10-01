@@ -13,7 +13,6 @@ import '../../trips/data/trips_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/utils/kalman_filter.dart';
-import '../../../core/services/road_snap_service.dart';
 import '../../../core/utils/haptics_utils.dart';
 import '../../../core/permissions/permissions_handler.dart';
 

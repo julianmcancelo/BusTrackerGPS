@@ -264,6 +264,11 @@ class _TransportManagementScreenState extends ConsumerState<TransportManagementS
                   tooltip: 'Sincronizar Bitácora GPS',
                   onPressed: _syncBitacora,
                 ),
+          IconButton(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'Auditoría de Frecuencias',
+            onPressed: () => context.push('/frequency'),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

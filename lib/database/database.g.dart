@@ -6641,6 +6641,1582 @@ class SettingsCompanion extends UpdateCompanion<SettingEntry> {
   }
 }
 
+class $FrequencySessionsTable extends FrequencySessions
+    with TableInfo<$FrequencySessionsTable, FrequencySessionEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FrequencySessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _checkpointNameMeta = const VerificationMeta(
+    'checkpointName',
+  );
+  @override
+  late final GeneratedColumn<String> checkpointName = GeneratedColumn<String>(
+    'checkpoint_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetLineIdsMeta = const VerificationMeta(
+    'targetLineIds',
+  );
+  @override
+  late final GeneratedColumn<String> targetLineIds = GeneratedColumn<String>(
+    'target_line_ids',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+    'ended_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _auditorNameMeta = const VerificationMeta(
+    'auditorName',
+  );
+  @override
+  late final GeneratedColumn<String> auditorName = GeneratedColumn<String>(
+    'auditor_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('ACTIVE'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    checkpointName,
+    latitude,
+    longitude,
+    targetLineIds,
+    startedAt,
+    endedAt,
+    auditorName,
+    status,
+    notes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'frequency_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FrequencySessionEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('checkpoint_name')) {
+      context.handle(
+        _checkpointNameMeta,
+        checkpointName.isAcceptableOrUnknown(
+          data['checkpoint_name']!,
+          _checkpointNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_checkpointNameMeta);
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
+    if (data.containsKey('target_line_ids')) {
+      context.handle(
+        _targetLineIdsMeta,
+        targetLineIds.isAcceptableOrUnknown(
+          data['target_line_ids']!,
+          _targetLineIdsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    }
+    if (data.containsKey('auditor_name')) {
+      context.handle(
+        _auditorNameMeta,
+        auditorName.isAcceptableOrUnknown(
+          data['auditor_name']!,
+          _auditorNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FrequencySessionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FrequencySessionEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      checkpointName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}checkpoint_name'],
+      )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
+      targetLineIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_line_ids'],
+      ),
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      ),
+      auditorName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}auditor_name'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FrequencySessionsTable createAlias(String alias) {
+    return $FrequencySessionsTable(attachedDatabase, alias);
+  }
+}
+
+class FrequencySessionEntry extends DataClass
+    implements Insertable<FrequencySessionEntry> {
+  final int id;
+  final String title;
+  final String checkpointName;
+  final double? latitude;
+  final double? longitude;
+  final String? targetLineIds;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final String? auditorName;
+  final String status;
+  final String? notes;
+  final DateTime createdAt;
+  const FrequencySessionEntry({
+    required this.id,
+    required this.title,
+    required this.checkpointName,
+    this.latitude,
+    this.longitude,
+    this.targetLineIds,
+    required this.startedAt,
+    this.endedAt,
+    this.auditorName,
+    required this.status,
+    this.notes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['checkpoint_name'] = Variable<String>(checkpointName);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || targetLineIds != null) {
+      map['target_line_ids'] = Variable<String>(targetLineIds);
+    }
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || endedAt != null) {
+      map['ended_at'] = Variable<DateTime>(endedAt);
+    }
+    if (!nullToAbsent || auditorName != null) {
+      map['auditor_name'] = Variable<String>(auditorName);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  FrequencySessionsCompanion toCompanion(bool nullToAbsent) {
+    return FrequencySessionsCompanion(
+      id: Value(id),
+      title: Value(title),
+      checkpointName: Value(checkpointName),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      targetLineIds: targetLineIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetLineIds),
+      startedAt: Value(startedAt),
+      endedAt: endedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endedAt),
+      auditorName: auditorName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(auditorName),
+      status: Value(status),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory FrequencySessionEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FrequencySessionEntry(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      checkpointName: serializer.fromJson<String>(json['checkpointName']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      targetLineIds: serializer.fromJson<String?>(json['targetLineIds']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
+      auditorName: serializer.fromJson<String?>(json['auditorName']),
+      status: serializer.fromJson<String>(json['status']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'checkpointName': serializer.toJson<String>(checkpointName),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'targetLineIds': serializer.toJson<String?>(targetLineIds),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime?>(endedAt),
+      'auditorName': serializer.toJson<String?>(auditorName),
+      'status': serializer.toJson<String>(status),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  FrequencySessionEntry copyWith({
+    int? id,
+    String? title,
+    String? checkpointName,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
+    Value<String?> targetLineIds = const Value.absent(),
+    DateTime? startedAt,
+    Value<DateTime?> endedAt = const Value.absent(),
+    Value<String?> auditorName = const Value.absent(),
+    String? status,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+  }) => FrequencySessionEntry(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    checkpointName: checkpointName ?? this.checkpointName,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
+    targetLineIds: targetLineIds.present
+        ? targetLineIds.value
+        : this.targetLineIds,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt.present ? endedAt.value : this.endedAt,
+    auditorName: auditorName.present ? auditorName.value : this.auditorName,
+    status: status ?? this.status,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  FrequencySessionEntry copyWithCompanion(FrequencySessionsCompanion data) {
+    return FrequencySessionEntry(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      checkpointName: data.checkpointName.present
+          ? data.checkpointName.value
+          : this.checkpointName,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      targetLineIds: data.targetLineIds.present
+          ? data.targetLineIds.value
+          : this.targetLineIds,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+      auditorName: data.auditorName.present
+          ? data.auditorName.value
+          : this.auditorName,
+      status: data.status.present ? data.status.value : this.status,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FrequencySessionEntry(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('checkpointName: $checkpointName, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('targetLineIds: $targetLineIds, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('auditorName: $auditorName, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    checkpointName,
+    latitude,
+    longitude,
+    targetLineIds,
+    startedAt,
+    endedAt,
+    auditorName,
+    status,
+    notes,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FrequencySessionEntry &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.checkpointName == this.checkpointName &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.targetLineIds == this.targetLineIds &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt &&
+          other.auditorName == this.auditorName &&
+          other.status == this.status &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt);
+}
+
+class FrequencySessionsCompanion
+    extends UpdateCompanion<FrequencySessionEntry> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String> checkpointName;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<String?> targetLineIds;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> endedAt;
+  final Value<String?> auditorName;
+  final Value<String> status;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  const FrequencySessionsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.checkpointName = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.targetLineIds = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.auditorName = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  FrequencySessionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required String checkpointName,
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.targetLineIds = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.auditorName = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : title = Value(title),
+       checkpointName = Value(checkpointName);
+  static Insertable<FrequencySessionEntry> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? checkpointName,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<String>? targetLineIds,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+    Expression<String>? auditorName,
+    Expression<String>? status,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (checkpointName != null) 'checkpoint_name': checkpointName,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (targetLineIds != null) 'target_line_ids': targetLineIds,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (auditorName != null) 'auditor_name': auditorName,
+      if (status != null) 'status': status,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  FrequencySessionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? checkpointName,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
+    Value<String?>? targetLineIds,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? endedAt,
+    Value<String?>? auditorName,
+    Value<String>? status,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+  }) {
+    return FrequencySessionsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      checkpointName: checkpointName ?? this.checkpointName,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      targetLineIds: targetLineIds ?? this.targetLineIds,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      auditorName: auditorName ?? this.auditorName,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (checkpointName.present) {
+      map['checkpoint_name'] = Variable<String>(checkpointName.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (targetLineIds.present) {
+      map['target_line_ids'] = Variable<String>(targetLineIds.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    if (auditorName.present) {
+      map['auditor_name'] = Variable<String>(auditorName.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FrequencySessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('checkpointName: $checkpointName, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('targetLineIds: $targetLineIds, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('auditorName: $auditorName, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FrequencyRecordsTable extends FrequencyRecords
+    with TableInfo<$FrequencyRecordsTable, FrequencyRecordEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FrequencyRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<int> sessionId = GeneratedColumn<int>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES frequency_sessions (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _lineIdMeta = const VerificationMeta('lineId');
+  @override
+  late final GeneratedColumn<int> lineId = GeneratedColumn<int>(
+    'line_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES lines (id)',
+    ),
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<int> branchId = GeneratedColumn<int>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES branches (id)',
+    ),
+  );
+  static const VerificationMeta _directionMeta = const VerificationMeta(
+    'direction',
+  );
+  @override
+  late final GeneratedColumn<String> direction = GeneratedColumn<String>(
+    'direction',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _internalNumberMeta = const VerificationMeta(
+    'internalNumber',
+  );
+  @override
+  late final GeneratedColumn<String> internalNumber = GeneratedColumn<String>(
+    'internal_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _domainMeta = const VerificationMeta('domain');
+  @override
+  late final GeneratedColumn<String> domain = GeneratedColumn<String>(
+    'domain',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _passengerLoadMeta = const VerificationMeta(
+    'passengerLoad',
+  );
+  @override
+  late final GeneratedColumn<int> passengerLoad = GeneratedColumn<int>(
+    'passenger_load',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _observedAtMeta = const VerificationMeta(
+    'observedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> observedAt = GeneratedColumn<DateTime>(
+    'observed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _headwaySecondsMeta = const VerificationMeta(
+    'headwaySeconds',
+  );
+  @override
+  late final GeneratedColumn<int> headwaySeconds = GeneratedColumn<int>(
+    'headway_seconds',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isBunchingMeta = const VerificationMeta(
+    'isBunching',
+  );
+  @override
+  late final GeneratedColumn<bool> isBunching = GeneratedColumn<bool>(
+    'is_bunching',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_bunching" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDelayedMeta = const VerificationMeta(
+    'isDelayed',
+  );
+  @override
+  late final GeneratedColumn<bool> isDelayed = GeneratedColumn<bool>(
+    'is_delayed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_delayed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    lineId,
+    branchId,
+    direction,
+    internalNumber,
+    domain,
+    passengerLoad,
+    observedAt,
+    headwaySeconds,
+    isBunching,
+    isDelayed,
+    latitude,
+    longitude,
+    notes,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'frequency_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FrequencyRecordEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('line_id')) {
+      context.handle(
+        _lineIdMeta,
+        lineId.isAcceptableOrUnknown(data['line_id']!, _lineIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchIdMeta);
+    }
+    if (data.containsKey('direction')) {
+      context.handle(
+        _directionMeta,
+        direction.isAcceptableOrUnknown(data['direction']!, _directionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_directionMeta);
+    }
+    if (data.containsKey('internal_number')) {
+      context.handle(
+        _internalNumberMeta,
+        internalNumber.isAcceptableOrUnknown(
+          data['internal_number']!,
+          _internalNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('domain')) {
+      context.handle(
+        _domainMeta,
+        domain.isAcceptableOrUnknown(data['domain']!, _domainMeta),
+      );
+    }
+    if (data.containsKey('passenger_load')) {
+      context.handle(
+        _passengerLoadMeta,
+        passengerLoad.isAcceptableOrUnknown(
+          data['passenger_load']!,
+          _passengerLoadMeta,
+        ),
+      );
+    }
+    if (data.containsKey('observed_at')) {
+      context.handle(
+        _observedAtMeta,
+        observedAt.isAcceptableOrUnknown(data['observed_at']!, _observedAtMeta),
+      );
+    }
+    if (data.containsKey('headway_seconds')) {
+      context.handle(
+        _headwaySecondsMeta,
+        headwaySeconds.isAcceptableOrUnknown(
+          data['headway_seconds']!,
+          _headwaySecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_bunching')) {
+      context.handle(
+        _isBunchingMeta,
+        isBunching.isAcceptableOrUnknown(data['is_bunching']!, _isBunchingMeta),
+      );
+    }
+    if (data.containsKey('is_delayed')) {
+      context.handle(
+        _isDelayedMeta,
+        isDelayed.isAcceptableOrUnknown(data['is_delayed']!, _isDelayedMeta),
+      );
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FrequencyRecordEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FrequencyRecordEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}session_id'],
+      )!,
+      lineId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}line_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      direction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}direction'],
+      )!,
+      internalNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}internal_number'],
+      ),
+      domain: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}domain'],
+      ),
+      passengerLoad: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}passenger_load'],
+      )!,
+      observedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}observed_at'],
+      )!,
+      headwaySeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}headway_seconds'],
+      ),
+      isBunching: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_bunching'],
+      )!,
+      isDelayed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_delayed'],
+      )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+    );
+  }
+
+  @override
+  $FrequencyRecordsTable createAlias(String alias) {
+    return $FrequencyRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class FrequencyRecordEntry extends DataClass
+    implements Insertable<FrequencyRecordEntry> {
+  final int id;
+  final int sessionId;
+  final int lineId;
+  final int branchId;
+  final String direction;
+  final String? internalNumber;
+  final String? domain;
+  final int passengerLoad;
+  final DateTime observedAt;
+  final int? headwaySeconds;
+  final bool isBunching;
+  final bool isDelayed;
+  final double? latitude;
+  final double? longitude;
+  final String? notes;
+  const FrequencyRecordEntry({
+    required this.id,
+    required this.sessionId,
+    required this.lineId,
+    required this.branchId,
+    required this.direction,
+    this.internalNumber,
+    this.domain,
+    required this.passengerLoad,
+    required this.observedAt,
+    this.headwaySeconds,
+    required this.isBunching,
+    required this.isDelayed,
+    this.latitude,
+    this.longitude,
+    this.notes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['session_id'] = Variable<int>(sessionId);
+    map['line_id'] = Variable<int>(lineId);
+    map['branch_id'] = Variable<int>(branchId);
+    map['direction'] = Variable<String>(direction);
+    if (!nullToAbsent || internalNumber != null) {
+      map['internal_number'] = Variable<String>(internalNumber);
+    }
+    if (!nullToAbsent || domain != null) {
+      map['domain'] = Variable<String>(domain);
+    }
+    map['passenger_load'] = Variable<int>(passengerLoad);
+    map['observed_at'] = Variable<DateTime>(observedAt);
+    if (!nullToAbsent || headwaySeconds != null) {
+      map['headway_seconds'] = Variable<int>(headwaySeconds);
+    }
+    map['is_bunching'] = Variable<bool>(isBunching);
+    map['is_delayed'] = Variable<bool>(isDelayed);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  FrequencyRecordsCompanion toCompanion(bool nullToAbsent) {
+    return FrequencyRecordsCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      lineId: Value(lineId),
+      branchId: Value(branchId),
+      direction: Value(direction),
+      internalNumber: internalNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(internalNumber),
+      domain: domain == null && nullToAbsent
+          ? const Value.absent()
+          : Value(domain),
+      passengerLoad: Value(passengerLoad),
+      observedAt: Value(observedAt),
+      headwaySeconds: headwaySeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(headwaySeconds),
+      isBunching: Value(isBunching),
+      isDelayed: Value(isDelayed),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+    );
+  }
+
+  factory FrequencyRecordEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FrequencyRecordEntry(
+      id: serializer.fromJson<int>(json['id']),
+      sessionId: serializer.fromJson<int>(json['sessionId']),
+      lineId: serializer.fromJson<int>(json['lineId']),
+      branchId: serializer.fromJson<int>(json['branchId']),
+      direction: serializer.fromJson<String>(json['direction']),
+      internalNumber: serializer.fromJson<String?>(json['internalNumber']),
+      domain: serializer.fromJson<String?>(json['domain']),
+      passengerLoad: serializer.fromJson<int>(json['passengerLoad']),
+      observedAt: serializer.fromJson<DateTime>(json['observedAt']),
+      headwaySeconds: serializer.fromJson<int?>(json['headwaySeconds']),
+      isBunching: serializer.fromJson<bool>(json['isBunching']),
+      isDelayed: serializer.fromJson<bool>(json['isDelayed']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sessionId': serializer.toJson<int>(sessionId),
+      'lineId': serializer.toJson<int>(lineId),
+      'branchId': serializer.toJson<int>(branchId),
+      'direction': serializer.toJson<String>(direction),
+      'internalNumber': serializer.toJson<String?>(internalNumber),
+      'domain': serializer.toJson<String?>(domain),
+      'passengerLoad': serializer.toJson<int>(passengerLoad),
+      'observedAt': serializer.toJson<DateTime>(observedAt),
+      'headwaySeconds': serializer.toJson<int?>(headwaySeconds),
+      'isBunching': serializer.toJson<bool>(isBunching),
+      'isDelayed': serializer.toJson<bool>(isDelayed),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  FrequencyRecordEntry copyWith({
+    int? id,
+    int? sessionId,
+    int? lineId,
+    int? branchId,
+    String? direction,
+    Value<String?> internalNumber = const Value.absent(),
+    Value<String?> domain = const Value.absent(),
+    int? passengerLoad,
+    DateTime? observedAt,
+    Value<int?> headwaySeconds = const Value.absent(),
+    bool? isBunching,
+    bool? isDelayed,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+  }) => FrequencyRecordEntry(
+    id: id ?? this.id,
+    sessionId: sessionId ?? this.sessionId,
+    lineId: lineId ?? this.lineId,
+    branchId: branchId ?? this.branchId,
+    direction: direction ?? this.direction,
+    internalNumber: internalNumber.present
+        ? internalNumber.value
+        : this.internalNumber,
+    domain: domain.present ? domain.value : this.domain,
+    passengerLoad: passengerLoad ?? this.passengerLoad,
+    observedAt: observedAt ?? this.observedAt,
+    headwaySeconds: headwaySeconds.present
+        ? headwaySeconds.value
+        : this.headwaySeconds,
+    isBunching: isBunching ?? this.isBunching,
+    isDelayed: isDelayed ?? this.isDelayed,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
+    notes: notes.present ? notes.value : this.notes,
+  );
+  FrequencyRecordEntry copyWithCompanion(FrequencyRecordsCompanion data) {
+    return FrequencyRecordEntry(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      lineId: data.lineId.present ? data.lineId.value : this.lineId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      direction: data.direction.present ? data.direction.value : this.direction,
+      internalNumber: data.internalNumber.present
+          ? data.internalNumber.value
+          : this.internalNumber,
+      domain: data.domain.present ? data.domain.value : this.domain,
+      passengerLoad: data.passengerLoad.present
+          ? data.passengerLoad.value
+          : this.passengerLoad,
+      observedAt: data.observedAt.present
+          ? data.observedAt.value
+          : this.observedAt,
+      headwaySeconds: data.headwaySeconds.present
+          ? data.headwaySeconds.value
+          : this.headwaySeconds,
+      isBunching: data.isBunching.present
+          ? data.isBunching.value
+          : this.isBunching,
+      isDelayed: data.isDelayed.present ? data.isDelayed.value : this.isDelayed,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FrequencyRecordEntry(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('lineId: $lineId, ')
+          ..write('branchId: $branchId, ')
+          ..write('direction: $direction, ')
+          ..write('internalNumber: $internalNumber, ')
+          ..write('domain: $domain, ')
+          ..write('passengerLoad: $passengerLoad, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('headwaySeconds: $headwaySeconds, ')
+          ..write('isBunching: $isBunching, ')
+          ..write('isDelayed: $isDelayed, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    lineId,
+    branchId,
+    direction,
+    internalNumber,
+    domain,
+    passengerLoad,
+    observedAt,
+    headwaySeconds,
+    isBunching,
+    isDelayed,
+    latitude,
+    longitude,
+    notes,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FrequencyRecordEntry &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.lineId == this.lineId &&
+          other.branchId == this.branchId &&
+          other.direction == this.direction &&
+          other.internalNumber == this.internalNumber &&
+          other.domain == this.domain &&
+          other.passengerLoad == this.passengerLoad &&
+          other.observedAt == this.observedAt &&
+          other.headwaySeconds == this.headwaySeconds &&
+          other.isBunching == this.isBunching &&
+          other.isDelayed == this.isDelayed &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.notes == this.notes);
+}
+
+class FrequencyRecordsCompanion extends UpdateCompanion<FrequencyRecordEntry> {
+  final Value<int> id;
+  final Value<int> sessionId;
+  final Value<int> lineId;
+  final Value<int> branchId;
+  final Value<String> direction;
+  final Value<String?> internalNumber;
+  final Value<String?> domain;
+  final Value<int> passengerLoad;
+  final Value<DateTime> observedAt;
+  final Value<int?> headwaySeconds;
+  final Value<bool> isBunching;
+  final Value<bool> isDelayed;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<String?> notes;
+  const FrequencyRecordsCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.lineId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.direction = const Value.absent(),
+    this.internalNumber = const Value.absent(),
+    this.domain = const Value.absent(),
+    this.passengerLoad = const Value.absent(),
+    this.observedAt = const Value.absent(),
+    this.headwaySeconds = const Value.absent(),
+    this.isBunching = const Value.absent(),
+    this.isDelayed = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.notes = const Value.absent(),
+  });
+  FrequencyRecordsCompanion.insert({
+    this.id = const Value.absent(),
+    required int sessionId,
+    required int lineId,
+    required int branchId,
+    required String direction,
+    this.internalNumber = const Value.absent(),
+    this.domain = const Value.absent(),
+    this.passengerLoad = const Value.absent(),
+    this.observedAt = const Value.absent(),
+    this.headwaySeconds = const Value.absent(),
+    this.isBunching = const Value.absent(),
+    this.isDelayed = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.notes = const Value.absent(),
+  }) : sessionId = Value(sessionId),
+       lineId = Value(lineId),
+       branchId = Value(branchId),
+       direction = Value(direction);
+  static Insertable<FrequencyRecordEntry> custom({
+    Expression<int>? id,
+    Expression<int>? sessionId,
+    Expression<int>? lineId,
+    Expression<int>? branchId,
+    Expression<String>? direction,
+    Expression<String>? internalNumber,
+    Expression<String>? domain,
+    Expression<int>? passengerLoad,
+    Expression<DateTime>? observedAt,
+    Expression<int>? headwaySeconds,
+    Expression<bool>? isBunching,
+    Expression<bool>? isDelayed,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<String>? notes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (lineId != null) 'line_id': lineId,
+      if (branchId != null) 'branch_id': branchId,
+      if (direction != null) 'direction': direction,
+      if (internalNumber != null) 'internal_number': internalNumber,
+      if (domain != null) 'domain': domain,
+      if (passengerLoad != null) 'passenger_load': passengerLoad,
+      if (observedAt != null) 'observed_at': observedAt,
+      if (headwaySeconds != null) 'headway_seconds': headwaySeconds,
+      if (isBunching != null) 'is_bunching': isBunching,
+      if (isDelayed != null) 'is_delayed': isDelayed,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  FrequencyRecordsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? sessionId,
+    Value<int>? lineId,
+    Value<int>? branchId,
+    Value<String>? direction,
+    Value<String?>? internalNumber,
+    Value<String?>? domain,
+    Value<int>? passengerLoad,
+    Value<DateTime>? observedAt,
+    Value<int?>? headwaySeconds,
+    Value<bool>? isBunching,
+    Value<bool>? isDelayed,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
+    Value<String?>? notes,
+  }) {
+    return FrequencyRecordsCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      lineId: lineId ?? this.lineId,
+      branchId: branchId ?? this.branchId,
+      direction: direction ?? this.direction,
+      internalNumber: internalNumber ?? this.internalNumber,
+      domain: domain ?? this.domain,
+      passengerLoad: passengerLoad ?? this.passengerLoad,
+      observedAt: observedAt ?? this.observedAt,
+      headwaySeconds: headwaySeconds ?? this.headwaySeconds,
+      isBunching: isBunching ?? this.isBunching,
+      isDelayed: isDelayed ?? this.isDelayed,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<int>(sessionId.value);
+    }
+    if (lineId.present) {
+      map['line_id'] = Variable<int>(lineId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<int>(branchId.value);
+    }
+    if (direction.present) {
+      map['direction'] = Variable<String>(direction.value);
+    }
+    if (internalNumber.present) {
+      map['internal_number'] = Variable<String>(internalNumber.value);
+    }
+    if (domain.present) {
+      map['domain'] = Variable<String>(domain.value);
+    }
+    if (passengerLoad.present) {
+      map['passenger_load'] = Variable<int>(passengerLoad.value);
+    }
+    if (observedAt.present) {
+      map['observed_at'] = Variable<DateTime>(observedAt.value);
+    }
+    if (headwaySeconds.present) {
+      map['headway_seconds'] = Variable<int>(headwaySeconds.value);
+    }
+    if (isBunching.present) {
+      map['is_bunching'] = Variable<bool>(isBunching.value);
+    }
+    if (isDelayed.present) {
+      map['is_delayed'] = Variable<bool>(isDelayed.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FrequencyRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('lineId: $lineId, ')
+          ..write('branchId: $branchId, ')
+          ..write('direction: $direction, ')
+          ..write('internalNumber: $internalNumber, ')
+          ..write('domain: $domain, ')
+          ..write('passengerLoad: $passengerLoad, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('headwaySeconds: $headwaySeconds, ')
+          ..write('isBunching: $isBunching, ')
+          ..write('isDelayed: $isDelayed, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6657,6 +8233,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OfflineMapRegionsTable offlineMapRegions =
       $OfflineMapRegionsTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $FrequencySessionsTable frequencySessions =
+      $FrequencySessionsTable(this);
+  late final $FrequencyRecordsTable frequencyRecords = $FrequencyRecordsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6672,6 +8253,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     referenceRoutes,
     offlineMapRegions,
     settings,
+    frequencySessions,
+    frequencyRecords,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -6737,6 +8320,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('reference_routes', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'frequency_sessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('frequency_records', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -6815,6 +8405,26 @@ final class $$LinesTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _referenceRoutesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$FrequencyRecordsTable, List<FrequencyRecordEntry>>
+  _frequencyRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.frequencyRecords,
+    aliasName: $_aliasNameGenerator(db.lines.id, db.frequencyRecords.lineId),
+  );
+
+  $$FrequencyRecordsTableProcessedTableManager get frequencyRecordsRefs {
+    final manager = $$FrequencyRecordsTableTableManager(
+      $_db,
+      $_db.frequencyRecords,
+    ).filter((f) => f.lineId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _frequencyRecordsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -6926,6 +8536,31 @@ class $$LinesTableFilterComposer extends Composer<_$AppDatabase, $LinesTable> {
           }) => $$ReferenceRoutesTableFilterComposer(
             $db: $db,
             $table: $db.referenceRoutes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> frequencyRecordsRefs(
+    Expression<bool> Function($$FrequencyRecordsTableFilterComposer f) f,
+  ) {
+    final $$FrequencyRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.lineId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7077,6 +8712,31 @@ class $$LinesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> frequencyRecordsRefs<T extends Object>(
+    Expression<T> Function($$FrequencyRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$FrequencyRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.lineId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$LinesTableTableManager
@@ -7096,6 +8756,7 @@ class $$LinesTableTableManager
             bool branchesRefs,
             bool tripsRefs,
             bool referenceRoutesRefs,
+            bool frequencyRecordsRefs,
           })
         > {
   $$LinesTableTableManager(_$AppDatabase db, $LinesTable table)
@@ -7152,6 +8813,7 @@ class $$LinesTableTableManager
                 branchesRefs = false,
                 tripsRefs = false,
                 referenceRoutesRefs = false,
+                frequencyRecordsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7159,6 +8821,7 @@ class $$LinesTableTableManager
                     if (branchesRefs) db.branches,
                     if (tripsRefs) db.trips,
                     if (referenceRoutesRefs) db.referenceRoutes,
+                    if (frequencyRecordsRefs) db.frequencyRecords,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -7222,6 +8885,27 @@ class $$LinesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (frequencyRecordsRefs)
+                        await $_getPrefetchedData<
+                          LineEntry,
+                          $LinesTable,
+                          FrequencyRecordEntry
+                        >(
+                          currentTable: table,
+                          referencedTable: $$LinesTableReferences
+                              ._frequencyRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$LinesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).frequencyRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.lineId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7246,6 +8930,7 @@ typedef $$LinesTableProcessedTableManager =
         bool branchesRefs,
         bool tripsRefs,
         bool referenceRoutesRefs,
+        bool frequencyRecordsRefs,
       })
     >;
 typedef $$BranchesTableCreateCompanionBuilder =
@@ -7327,6 +9012,29 @@ final class $$BranchesTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _referenceRoutesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$FrequencyRecordsTable, List<FrequencyRecordEntry>>
+  _frequencyRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.frequencyRecords,
+    aliasName: $_aliasNameGenerator(
+      db.branches.id,
+      db.frequencyRecords.branchId,
+    ),
+  );
+
+  $$FrequencyRecordsTableProcessedTableManager get frequencyRecordsRefs {
+    final manager = $$FrequencyRecordsTableTableManager(
+      $_db,
+      $_db.frequencyRecords,
+    ).filter((f) => f.branchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _frequencyRecordsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -7437,6 +9145,31 @@ class $$BranchesTableFilterComposer
           }) => $$ReferenceRoutesTableFilterComposer(
             $db: $db,
             $table: $db.referenceRoutes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> frequencyRecordsRefs(
+    Expression<bool> Function($$FrequencyRecordsTableFilterComposer f) f,
+  ) {
+    final $$FrequencyRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.branchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7611,6 +9344,31 @@ class $$BranchesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> frequencyRecordsRefs<T extends Object>(
+    Expression<T> Function($$FrequencyRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$FrequencyRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.branchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$BranchesTableTableManager
@@ -7630,6 +9388,7 @@ class $$BranchesTableTableManager
             bool lineId,
             bool tripsRefs,
             bool referenceRoutesRefs,
+            bool frequencyRecordsRefs,
           })
         > {
   $$BranchesTableTableManager(_$AppDatabase db, $BranchesTable table)
@@ -7692,12 +9451,14 @@ class $$BranchesTableTableManager
                 lineId = false,
                 tripsRefs = false,
                 referenceRoutesRefs = false,
+                frequencyRecordsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (tripsRefs) db.trips,
                     if (referenceRoutesRefs) db.referenceRoutes,
+                    if (frequencyRecordsRefs) db.frequencyRecords,
                   ],
                   addJoins:
                       <
@@ -7775,6 +9536,27 @@ class $$BranchesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (frequencyRecordsRefs)
+                        await $_getPrefetchedData<
+                          BranchEntry,
+                          $BranchesTable,
+                          FrequencyRecordEntry
+                        >(
+                          currentTable: table,
+                          referencedTable: $$BranchesTableReferences
+                              ._frequencyRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$BranchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).frequencyRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.branchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7799,6 +9581,7 @@ typedef $$BranchesTableProcessedTableManager =
         bool lineId,
         bool tripsRefs,
         bool referenceRoutesRefs,
+        bool frequencyRecordsRefs,
       })
     >;
 typedef $$TripsTableCreateCompanionBuilder =
@@ -12180,6 +13963,1171 @@ typedef $$SettingsTableProcessedTableManager =
       SettingEntry,
       PrefetchHooks Function()
     >;
+typedef $$FrequencySessionsTableCreateCompanionBuilder =
+    FrequencySessionsCompanion Function({
+      Value<int> id,
+      required String title,
+      required String checkpointName,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<String?> targetLineIds,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+      Value<String?> auditorName,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+typedef $$FrequencySessionsTableUpdateCompanionBuilder =
+    FrequencySessionsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String> checkpointName,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<String?> targetLineIds,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+      Value<String?> auditorName,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+
+final class $$FrequencySessionsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $FrequencySessionsTable,
+          FrequencySessionEntry
+        > {
+  $$FrequencySessionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$FrequencyRecordsTable, List<FrequencyRecordEntry>>
+  _frequencyRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.frequencyRecords,
+    aliasName: $_aliasNameGenerator(
+      db.frequencySessions.id,
+      db.frequencyRecords.sessionId,
+    ),
+  );
+
+  $$FrequencyRecordsTableProcessedTableManager get frequencyRecordsRefs {
+    final manager = $$FrequencyRecordsTableTableManager(
+      $_db,
+      $_db.frequencyRecords,
+    ).filter((f) => f.sessionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _frequencyRecordsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FrequencySessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $FrequencySessionsTable> {
+  $$FrequencySessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checkpointName => $composableBuilder(
+    column: $table.checkpointName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetLineIds => $composableBuilder(
+    column: $table.targetLineIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get auditorName => $composableBuilder(
+    column: $table.auditorName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> frequencyRecordsRefs(
+    Expression<bool> Function($$FrequencyRecordsTableFilterComposer f) f,
+  ) {
+    final $$FrequencyRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FrequencySessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FrequencySessionsTable> {
+  $$FrequencySessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checkpointName => $composableBuilder(
+    column: $table.checkpointName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetLineIds => $composableBuilder(
+    column: $table.targetLineIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get auditorName => $composableBuilder(
+    column: $table.auditorName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FrequencySessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FrequencySessionsTable> {
+  $$FrequencySessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get checkpointName => $composableBuilder(
+    column: $table.checkpointName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<String> get targetLineIds => $composableBuilder(
+    column: $table.targetLineIds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get auditorName => $composableBuilder(
+    column: $table.auditorName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> frequencyRecordsRefs<T extends Object>(
+    Expression<T> Function($$FrequencyRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$FrequencyRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.frequencyRecords,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencyRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.frequencyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FrequencySessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FrequencySessionsTable,
+          FrequencySessionEntry,
+          $$FrequencySessionsTableFilterComposer,
+          $$FrequencySessionsTableOrderingComposer,
+          $$FrequencySessionsTableAnnotationComposer,
+          $$FrequencySessionsTableCreateCompanionBuilder,
+          $$FrequencySessionsTableUpdateCompanionBuilder,
+          (FrequencySessionEntry, $$FrequencySessionsTableReferences),
+          FrequencySessionEntry,
+          PrefetchHooks Function({bool frequencyRecordsRefs})
+        > {
+  $$FrequencySessionsTableTableManager(
+    _$AppDatabase db,
+    $FrequencySessionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FrequencySessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FrequencySessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FrequencySessionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> checkpointName = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<String?> targetLineIds = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> endedAt = const Value.absent(),
+                Value<String?> auditorName = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => FrequencySessionsCompanion(
+                id: id,
+                title: title,
+                checkpointName: checkpointName,
+                latitude: latitude,
+                longitude: longitude,
+                targetLineIds: targetLineIds,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                auditorName: auditorName,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required String checkpointName,
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<String?> targetLineIds = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> endedAt = const Value.absent(),
+                Value<String?> auditorName = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => FrequencySessionsCompanion.insert(
+                id: id,
+                title: title,
+                checkpointName: checkpointName,
+                latitude: latitude,
+                longitude: longitude,
+                targetLineIds: targetLineIds,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                auditorName: auditorName,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FrequencySessionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({frequencyRecordsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (frequencyRecordsRefs) db.frequencyRecords,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (frequencyRecordsRefs)
+                    await $_getPrefetchedData<
+                      FrequencySessionEntry,
+                      $FrequencySessionsTable,
+                      FrequencyRecordEntry
+                    >(
+                      currentTable: table,
+                      referencedTable: $$FrequencySessionsTableReferences
+                          ._frequencyRecordsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$FrequencySessionsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).frequencyRecordsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.sessionId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FrequencySessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FrequencySessionsTable,
+      FrequencySessionEntry,
+      $$FrequencySessionsTableFilterComposer,
+      $$FrequencySessionsTableOrderingComposer,
+      $$FrequencySessionsTableAnnotationComposer,
+      $$FrequencySessionsTableCreateCompanionBuilder,
+      $$FrequencySessionsTableUpdateCompanionBuilder,
+      (FrequencySessionEntry, $$FrequencySessionsTableReferences),
+      FrequencySessionEntry,
+      PrefetchHooks Function({bool frequencyRecordsRefs})
+    >;
+typedef $$FrequencyRecordsTableCreateCompanionBuilder =
+    FrequencyRecordsCompanion Function({
+      Value<int> id,
+      required int sessionId,
+      required int lineId,
+      required int branchId,
+      required String direction,
+      Value<String?> internalNumber,
+      Value<String?> domain,
+      Value<int> passengerLoad,
+      Value<DateTime> observedAt,
+      Value<int?> headwaySeconds,
+      Value<bool> isBunching,
+      Value<bool> isDelayed,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<String?> notes,
+    });
+typedef $$FrequencyRecordsTableUpdateCompanionBuilder =
+    FrequencyRecordsCompanion Function({
+      Value<int> id,
+      Value<int> sessionId,
+      Value<int> lineId,
+      Value<int> branchId,
+      Value<String> direction,
+      Value<String?> internalNumber,
+      Value<String?> domain,
+      Value<int> passengerLoad,
+      Value<DateTime> observedAt,
+      Value<int?> headwaySeconds,
+      Value<bool> isBunching,
+      Value<bool> isDelayed,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<String?> notes,
+    });
+
+final class $$FrequencyRecordsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $FrequencyRecordsTable,
+          FrequencyRecordEntry
+        > {
+  $$FrequencyRecordsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $FrequencySessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.frequencySessions.createAlias(
+        $_aliasNameGenerator(
+          db.frequencyRecords.sessionId,
+          db.frequencySessions.id,
+        ),
+      );
+
+  $$FrequencySessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<int>('session_id')!;
+
+    final manager = $$FrequencySessionsTableTableManager(
+      $_db,
+      $_db.frequencySessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $LinesTable _lineIdTable(_$AppDatabase db) => db.lines.createAlias(
+    $_aliasNameGenerator(db.frequencyRecords.lineId, db.lines.id),
+  );
+
+  $$LinesTableProcessedTableManager get lineId {
+    final $_column = $_itemColumn<int>('line_id')!;
+
+    final manager = $$LinesTableTableManager(
+      $_db,
+      $_db.lines,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_lineIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $BranchesTable _branchIdTable(_$AppDatabase db) =>
+      db.branches.createAlias(
+        $_aliasNameGenerator(db.frequencyRecords.branchId, db.branches.id),
+      );
+
+  $$BranchesTableProcessedTableManager get branchId {
+    final $_column = $_itemColumn<int>('branch_id')!;
+
+    final manager = $$BranchesTableTableManager(
+      $_db,
+      $_db.branches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_branchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FrequencyRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $FrequencyRecordsTable> {
+  $$FrequencyRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get internalNumber => $composableBuilder(
+    column: $table.internalNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get domain => $composableBuilder(
+    column: $table.domain,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get passengerLoad => $composableBuilder(
+    column: $table.passengerLoad,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get headwaySeconds => $composableBuilder(
+    column: $table.headwaySeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBunching => $composableBuilder(
+    column: $table.isBunching,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDelayed => $composableBuilder(
+    column: $table.isDelayed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FrequencySessionsTableFilterComposer get sessionId {
+    final $$FrequencySessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.frequencySessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencySessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.frequencySessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LinesTableFilterComposer get lineId {
+    final $$LinesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lineId,
+      referencedTable: $db.lines,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LinesTableFilterComposer(
+            $db: $db,
+            $table: $db.lines,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BranchesTableFilterComposer get branchId {
+    final $$BranchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.branchId,
+      referencedTable: $db.branches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchesTableFilterComposer(
+            $db: $db,
+            $table: $db.branches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FrequencyRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FrequencyRecordsTable> {
+  $$FrequencyRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get internalNumber => $composableBuilder(
+    column: $table.internalNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get domain => $composableBuilder(
+    column: $table.domain,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get passengerLoad => $composableBuilder(
+    column: $table.passengerLoad,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get headwaySeconds => $composableBuilder(
+    column: $table.headwaySeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBunching => $composableBuilder(
+    column: $table.isBunching,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDelayed => $composableBuilder(
+    column: $table.isDelayed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FrequencySessionsTableOrderingComposer get sessionId {
+    final $$FrequencySessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.frequencySessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FrequencySessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.frequencySessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LinesTableOrderingComposer get lineId {
+    final $$LinesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lineId,
+      referencedTable: $db.lines,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LinesTableOrderingComposer(
+            $db: $db,
+            $table: $db.lines,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BranchesTableOrderingComposer get branchId {
+    final $$BranchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.branchId,
+      referencedTable: $db.branches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.branches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FrequencyRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FrequencyRecordsTable> {
+  $$FrequencyRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
+
+  GeneratedColumn<String> get internalNumber => $composableBuilder(
+    column: $table.internalNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get domain =>
+      $composableBuilder(column: $table.domain, builder: (column) => column);
+
+  GeneratedColumn<int> get passengerLoad => $composableBuilder(
+    column: $table.passengerLoad,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get observedAt => $composableBuilder(
+    column: $table.observedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get headwaySeconds => $composableBuilder(
+    column: $table.headwaySeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isBunching => $composableBuilder(
+    column: $table.isBunching,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDelayed =>
+      $composableBuilder(column: $table.isDelayed, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  $$FrequencySessionsTableAnnotationComposer get sessionId {
+    final $$FrequencySessionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.frequencySessions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FrequencySessionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.frequencySessions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$LinesTableAnnotationComposer get lineId {
+    final $$LinesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lineId,
+      referencedTable: $db.lines,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LinesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.lines,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BranchesTableAnnotationComposer get branchId {
+    final $$BranchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.branchId,
+      referencedTable: $db.branches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.branches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FrequencyRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FrequencyRecordsTable,
+          FrequencyRecordEntry,
+          $$FrequencyRecordsTableFilterComposer,
+          $$FrequencyRecordsTableOrderingComposer,
+          $$FrequencyRecordsTableAnnotationComposer,
+          $$FrequencyRecordsTableCreateCompanionBuilder,
+          $$FrequencyRecordsTableUpdateCompanionBuilder,
+          (FrequencyRecordEntry, $$FrequencyRecordsTableReferences),
+          FrequencyRecordEntry,
+          PrefetchHooks Function({bool sessionId, bool lineId, bool branchId})
+        > {
+  $$FrequencyRecordsTableTableManager(
+    _$AppDatabase db,
+    $FrequencyRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FrequencyRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FrequencyRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FrequencyRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> sessionId = const Value.absent(),
+                Value<int> lineId = const Value.absent(),
+                Value<int> branchId = const Value.absent(),
+                Value<String> direction = const Value.absent(),
+                Value<String?> internalNumber = const Value.absent(),
+                Value<String?> domain = const Value.absent(),
+                Value<int> passengerLoad = const Value.absent(),
+                Value<DateTime> observedAt = const Value.absent(),
+                Value<int?> headwaySeconds = const Value.absent(),
+                Value<bool> isBunching = const Value.absent(),
+                Value<bool> isDelayed = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => FrequencyRecordsCompanion(
+                id: id,
+                sessionId: sessionId,
+                lineId: lineId,
+                branchId: branchId,
+                direction: direction,
+                internalNumber: internalNumber,
+                domain: domain,
+                passengerLoad: passengerLoad,
+                observedAt: observedAt,
+                headwaySeconds: headwaySeconds,
+                isBunching: isBunching,
+                isDelayed: isDelayed,
+                latitude: latitude,
+                longitude: longitude,
+                notes: notes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int sessionId,
+                required int lineId,
+                required int branchId,
+                required String direction,
+                Value<String?> internalNumber = const Value.absent(),
+                Value<String?> domain = const Value.absent(),
+                Value<int> passengerLoad = const Value.absent(),
+                Value<DateTime> observedAt = const Value.absent(),
+                Value<int?> headwaySeconds = const Value.absent(),
+                Value<bool> isBunching = const Value.absent(),
+                Value<bool> isDelayed = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => FrequencyRecordsCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                lineId: lineId,
+                branchId: branchId,
+                direction: direction,
+                internalNumber: internalNumber,
+                domain: domain,
+                passengerLoad: passengerLoad,
+                observedAt: observedAt,
+                headwaySeconds: headwaySeconds,
+                isBunching: isBunching,
+                isDelayed: isDelayed,
+                latitude: latitude,
+                longitude: longitude,
+                notes: notes,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FrequencyRecordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({sessionId = false, lineId = false, branchId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (sessionId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.sessionId,
+                                    referencedTable:
+                                        $$FrequencyRecordsTableReferences
+                                            ._sessionIdTable(db),
+                                    referencedColumn:
+                                        $$FrequencyRecordsTableReferences
+                                            ._sessionIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (lineId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.lineId,
+                                    referencedTable:
+                                        $$FrequencyRecordsTableReferences
+                                            ._lineIdTable(db),
+                                    referencedColumn:
+                                        $$FrequencyRecordsTableReferences
+                                            ._lineIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (branchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.branchId,
+                                    referencedTable:
+                                        $$FrequencyRecordsTableReferences
+                                            ._branchIdTable(db),
+                                    referencedColumn:
+                                        $$FrequencyRecordsTableReferences
+                                            ._branchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$FrequencyRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FrequencyRecordsTable,
+      FrequencyRecordEntry,
+      $$FrequencyRecordsTableFilterComposer,
+      $$FrequencyRecordsTableOrderingComposer,
+      $$FrequencyRecordsTableAnnotationComposer,
+      $$FrequencyRecordsTableCreateCompanionBuilder,
+      $$FrequencyRecordsTableUpdateCompanionBuilder,
+      (FrequencyRecordEntry, $$FrequencyRecordsTableReferences),
+      FrequencyRecordEntry,
+      PrefetchHooks Function({bool sessionId, bool lineId, bool branchId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12204,4 +15152,8 @@ class $AppDatabaseManager {
       $$OfflineMapRegionsTableTableManager(_db, _db.offlineMapRegions);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$FrequencySessionsTableTableManager get frequencySessions =>
+      $$FrequencySessionsTableTableManager(_db, _db.frequencySessions);
+  $$FrequencyRecordsTableTableManager get frequencyRecords =>
+      $$FrequencyRecordsTableTableManager(_db, _db.frequencyRecords);
 }

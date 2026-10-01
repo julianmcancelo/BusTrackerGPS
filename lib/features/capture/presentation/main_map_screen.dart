@@ -43,7 +43,6 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
 
   List<LineEntry> _lines = [];
   List<BranchEntry> _branches = [];
-  bool _isLoadingTransport = true;
   bool _isConfigExpanded = true;
   bool _isVehicleExpanded = false;
   bool _isFilterExpanded = false;
@@ -57,8 +56,6 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
   BranchDirectionStatus? _directionStatus;
   List<LatLng> _referenceIdaPoints = [];
   List<LatLng> _referenceVueltaPoints = [];
-  List<LatLng> _localIdaPoints = [];
-  List<LatLng> _localVueltaPoints = [];
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -102,16 +99,12 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         _selectedLine = defaultLine;
         _branches = branches;
         _selectedBranch = branches.isNotEmpty ? branches.first : null;
-        _isLoadingTransport = false;
       });
       await _updateBranchDirectionStatus();
-    } else {
-      setState(() => _isLoadingTransport = false);
     }
   }
 
   Future<void> _refreshConfig() async {
-    setState(() => _isLoadingTransport = true);
     try {
       final db = ref.read(databaseProvider);
       await SyncService.fetchBitacoraGpsSurveys(db);
@@ -127,7 +120,6 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
           SnackBar(content: Text('Uy, hubo un error al actualizar: $e')),
         );
       }
-      setState(() => _isLoadingTransport = false);
     }
   }
 
@@ -135,13 +127,11 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
     if (line == null) return;
     setState(() {
       _selectedLine = line;
-      _isLoadingTransport = true;
     });
     final branches = await ref.read(transportRepositoryProvider).getBranchesForLine(line.id);
     setState(() {
       _branches = branches;
       _selectedBranch = branches.isNotEmpty ? branches.first : null;
-      _isLoadingTransport = false;
     });
     await _updateBranchDirectionStatus();
   }
@@ -167,8 +157,6 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
         _directionStatus = status;
         _referenceIdaPoints = idaPts;
         _referenceVueltaPoints = vueltaPts;
-        _localIdaPoints = status.localIdaPoints;
-        _localVueltaPoints = status.localVueltaPoints;
 
         // Auto-select missing direction so user can register immediately
         if (status.hasIda && !status.hasVuelta) {
@@ -607,6 +595,16 @@ class _MainMapScreenState extends ConsumerState<MainMapScreen> with SingleTicker
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/trips');
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.timer_outlined, color: Color(0xFF0284C7)),
+                      title: const Text('Control de Frecuencias (Aforo)', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Auditoría en punto fijo y emisión de informes', style: TextStyle(fontSize: 11)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/frequency');
                       },
                     ),
                     const Padding(

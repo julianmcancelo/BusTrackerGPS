@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../database/database.dart';
 import '../../../database/database_provider.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/geo_utils.dart';
 
 final gpsRepositoryProvider = Provider<GpsRepository>((ref) {

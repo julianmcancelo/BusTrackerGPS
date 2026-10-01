@@ -12,6 +12,8 @@ import 'tables/reference_routes_table.dart';
 import 'tables/offline_map_regions_table.dart';
 import 'tables/settings_table.dart';
 
+import 'tables/frequency_tables.dart';
+
 part 'database.g.dart';
 
 @DriftDatabase(
@@ -26,13 +28,15 @@ part 'database.g.dart';
     ReferenceRoutes,
     OfflineMapRegions,
     Settings,
+    FrequencySessions,
+    FrequencyRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
@@ -54,6 +58,8 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('CREATE INDEX idx_incidents_trip_id ON incidents (trip_id);');
           await customStatement('CREATE INDEX idx_trips_started_at ON trips (started_at);');
           await customStatement('CREATE INDEX idx_trips_line_id ON trips (line_id);');
+          await customStatement('CREATE INDEX idx_freq_records_session_id ON frequency_records (session_id);');
+          await customStatement('CREATE INDEX idx_freq_records_observed_at ON frequency_records (observed_at);');
 
           await seedInitialTransportData();
         },
@@ -62,6 +68,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(trips, trips.syncStatus);
             await m.addColumn(trips, trips.syncedAt);
             await m.addColumn(trips, trips.remoteId);
+          }
+          if (from < 3) {
+            await m.createTable(frequencySessions);
+            await m.createTable(frequencyRecords);
+            await customStatement('CREATE INDEX IF NOT EXISTS idx_freq_records_session_id ON frequency_records (session_id);');
+            await customStatement('CREATE INDEX IF NOT EXISTS idx_freq_records_observed_at ON frequency_records (observed_at);');
           }
         },
       );

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -10,7 +9,6 @@ import 'capture_notifier.dart';
 import '../../media/data/media_service.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../trips/data/trips_repository.dart';
 import '../data/gps_repository.dart';
 
 class CaptureScreen extends ConsumerStatefulWidget {

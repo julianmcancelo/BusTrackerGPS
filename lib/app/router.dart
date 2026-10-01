@@ -8,6 +8,9 @@ import '../features/trips/presentation/reference_route_detail_screen.dart';
 import '../features/transport/presentation/transport_management_screen.dart';
 import '../features/offline_maps/presentation/offline_maps_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/frequency/presentation/frequency_list_screen.dart';
+import '../features/frequency/presentation/frequency_session_screen.dart';
+import '../features/frequency/presentation/frequency_report_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -78,6 +81,25 @@ final appRouter = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/frequency',
+      name: 'frequency',
+      builder: (context, state) => const FrequencyListScreen(),
+    ),
+    GoRoute(
+      path: '/frequency/session/:id',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+        return FrequencySessionScreen(sessionId: id);
+      },
+    ),
+    GoRoute(
+      path: '/frequency/report/:id',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+        return FrequencyReportScreen(sessionId: id);
+      },
     ),
   ],
 );

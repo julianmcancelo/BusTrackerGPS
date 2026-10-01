@@ -117,6 +117,13 @@ class _TripListScreenState extends ConsumerState<TripListScreen> with SingleTick
       appBar: AppBar(
         title: const Text('HISTORIAL DE RELEVAMIENTOS'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'Control de Frecuencias',
+            onPressed: () => context.push('/frequency'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),

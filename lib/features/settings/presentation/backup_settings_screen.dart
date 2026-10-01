@@ -30,9 +30,9 @@ class _BackupSettingsScreenState extends ConsumerState<BackupSettingsScreen> {
   }
 
   Future<void> _restoreBackup() async {
-    final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['zip']);
-    if (result != null && result.isNotEmpty && result.first.path != null) {
-      final file = File(result.first.path!);
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['zip']);
+    if (files.isNotEmpty && files.first.path != null) {
+      final file = File(files.first.path!);
       final summary = await BackupService.inspectBackupZip(file);
 
       if (summary == null) {
