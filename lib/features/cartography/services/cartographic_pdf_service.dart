@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/utils/transport_utils.dart';
 import 'cartographic_projection.dart';
+import 'lanus_boundary_constants.dart';
 import 'map_tile_composer.dart';
 import 'street_itinerary_service.dart';
 
@@ -160,9 +161,12 @@ class CartographicPdfService {
 
   static List<LatLng>? _cachedLanusBoundary;
 
-  /// Carga y cachea los puntos poligonales del límite oficial del Partido de Lanús desde assets/data/lanus_boundary.json
+  /// Carga y cachea los puntos poligonales del límite oficial del Partido de Lanús.
+  /// Si el asset aún no fue descargado en el dispositivo, utiliza la constante geodésica kLanusBoundaryPoints.
   static Future<List<LatLng>> loadLanusBoundaryPoints() async {
-    if (_cachedLanusBoundary != null) return _cachedLanusBoundary!;
+    if (_cachedLanusBoundary != null && _cachedLanusBoundary!.isNotEmpty) {
+      return _cachedLanusBoundary!;
+    }
     try {
       String jsonStr = '';
       try {
@@ -194,7 +198,8 @@ class CartographicPdfService {
         }
       }
     } catch (_) {}
-    return const [];
+    _cachedLanusBoundary = kLanusBoundaryPoints;
+    return kLanusBoundaryPoints;
   }
 
   static Future<Uint8List?> _loadOfficialLogoBytes() async {
