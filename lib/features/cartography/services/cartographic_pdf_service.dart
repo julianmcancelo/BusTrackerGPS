@@ -109,7 +109,8 @@ class CartographicRouteData {
     if (direction.trim().toUpperCase() == 'IDA' ||
         direction.trim().toUpperCase().contains('AMBOS') ||
         direction.trim().toUpperCase().contains('TODO')) {
-      return polylinePoints;
+      if (polylinePoints.isNotEmpty) return polylinePoints;
+      if (vueltaPoints.isNotEmpty) return vueltaPoints.reversed.toList();
     }
     return polylinePoints;
   }
@@ -118,7 +119,24 @@ class CartographicRouteData {
     if (direction.trim().toUpperCase() == 'IDA') return const [];
     if (vueltaPoints.isNotEmpty) return vueltaPoints;
     if (direction.trim().toUpperCase() == 'VUELTA') return polylinePoints;
+    if (direction.trim().toUpperCase().contains('AMBOS') ||
+        direction.trim().toUpperCase().contains('TODO')) {
+      if (idaPoints.isNotEmpty) return idaPoints.reversed.toList();
+      if (polylinePoints.isNotEmpty) return polylinePoints.reversed.toList();
+    }
     return const [];
+  }
+
+  double get effectiveIdaDistanceKm {
+    if (idaDistanceKm != null && idaDistanceKm! > 0) return idaDistanceKm!;
+    if (hasVuelta) return distanceKm > 0 ? (distanceKm / 2) : (effectiveIdaPoints.length * 0.05);
+    return distanceKm > 0 ? distanceKm : (effectiveIdaPoints.length * 0.05);
+  }
+
+  double get effectiveVueltaDistanceKm {
+    if (vueltaDistanceKm != null && vueltaDistanceKm! > 0) return vueltaDistanceKm!;
+    if (hasVuelta) return distanceKm > 0 ? (distanceKm / 2) : (effectiveVueltaPoints.length * 0.05);
+    return 0.0;
   }
 
   List<LatLng> get allPoints {
@@ -869,6 +887,17 @@ class CartographicPdfService {
 
     if (idaPoints.isEmpty && vueltaPoints.isEmpty && lanusBoundaryPoints.isEmpty) return pw.SizedBox();
 
+    final hasBoth = idaPoints.isNotEmpty && vueltaPoints.isNotEmpty;
+
+    // Proyección isométrica a coordenadas PDF
+    final projectedIda = idaPoints.map((p) => projection.projectToPdf(p)).toList();
+    final projectedVuelta = vueltaPoints.map((p) => projection.projectToPdf(p)).toList();
+
+    // Desplazamiento lateral de carril a la derecha (+2.2 pt) para que Ida y Vuelta corran en paralelo
+    // sin pisarse ni anular sus halos en avenidas de doble sentido o trayectos compartidos
+    final idaPdf = hasBoth ? _computeOffsetPolyline(projectedIda, 2.2) : projectedIda;
+    final vueltaPdf = hasBoth ? _computeOffsetPolyline(projectedVuelta, 2.2) : projectedVuelta;
+
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
         // 0. Límite Jurisdiccional Oficial del Partido de Lanús (si está habilitado)
@@ -898,73 +927,69 @@ class CartographicPdfService {
           canvas.setLineDashPattern(); // Restaurar trazo continuo
         }
 
-        // 1. RECORRIDO VUELTA (Línea con espacios / discontinua)
-        if (vueltaPoints.isNotEmpty) {
-          // 1a. Halo blanco de contraste con patrón discontinuo
+        // 1. HALOS BLANCOS DE PROTECCIÓN Y CONTRASTE
+        if (vueltaPdf.isNotEmpty) {
           canvas.setStrokeColor(PdfColors.white);
           canvas.setLineWidth(5.5);
           canvas.setLineDashPattern(const [7, 4], 0);
-          final firstV = projection.projectToPdf(vueltaPoints.first);
-          canvas.moveTo(firstV.x, firstV.y);
-          for (int i = 1; i < vueltaPoints.length; i++) {
-            final pt = projection.projectToPdf(vueltaPoints[i]);
-            canvas.lineTo(pt.x, pt.y);
+          canvas.moveTo(vueltaPdf.first.x, vueltaPdf.first.y);
+          for (int i = 1; i < vueltaPdf.length; i++) {
+            canvas.lineTo(vueltaPdf[i].x, vueltaPdf[i].y);
           }
           canvas.strokePath();
+          canvas.setLineDashPattern();
+        }
 
-          // 1b. Traza oficial de VUELTA con espacios
+        if (idaPdf.isNotEmpty) {
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(5.5);
+          canvas.setLineDashPattern();
+          canvas.moveTo(idaPdf.first.x, idaPdf.first.y);
+          for (int i = 1; i < idaPdf.length; i++) {
+            canvas.lineTo(idaPdf[i].x, idaPdf[i].y);
+          }
+          canvas.strokePath();
+        }
+
+        // 2. TRAZAS COLOREADAS OFICIALES
+        // 2a. RECORRIDO VUELTA (Línea con espacios / discontinua)
+        if (vueltaPdf.isNotEmpty) {
           canvas.setStrokeColor(vueltaColor);
           canvas.setLineWidth(3.2);
           canvas.setLineDashPattern(const [7, 4], 0);
-          canvas.moveTo(firstV.x, firstV.y);
-          for (int i = 1; i < vueltaPoints.length; i++) {
-            final pt = projection.projectToPdf(vueltaPoints[i]);
-            canvas.lineTo(pt.x, pt.y);
+          canvas.moveTo(vueltaPdf.first.x, vueltaPdf.first.y);
+          for (int i = 1; i < vueltaPdf.length; i++) {
+            canvas.lineTo(vueltaPdf[i].x, vueltaPdf[i].y);
           }
           canvas.strokePath();
           canvas.setLineDashPattern(); // Restaurar trazo continuo
 
-          // 1c. Flechas direccionales espaciadas en sentido VUELTA
+          // Flechas direccionales en sentido VUELTA
           _drawDirectionalChevrons(
             canvas: canvas,
-            points: vueltaPoints,
-            projection: projection,
+            points: vueltaPdf,
             color: vueltaColor,
-            spacingMeters: 1800.0,
+            spacingPoints: 120.0,
           );
         }
 
-        // 2. RECORRIDO IDA (Línea continua)
-        if (idaPoints.isNotEmpty) {
-          // 2a. Halo blanco continuo
-          canvas.setStrokeColor(PdfColors.white);
-          canvas.setLineWidth(5.5);
-          canvas.setLineDashPattern();
-          final firstI = projection.projectToPdf(idaPoints.first);
-          canvas.moveTo(firstI.x, firstI.y);
-          for (int i = 1; i < idaPoints.length; i++) {
-            final pt = projection.projectToPdf(idaPoints[i]);
-            canvas.lineTo(pt.x, pt.y);
-          }
-          canvas.strokePath();
-
-          // 2b. Traza oficial de IDA continua
+        // 2b. RECORRIDO IDA (Línea continua)
+        if (idaPdf.isNotEmpty) {
           canvas.setStrokeColor(idaColor);
           canvas.setLineWidth(3.2);
-          canvas.moveTo(firstI.x, firstI.y);
-          for (int i = 1; i < idaPoints.length; i++) {
-            final pt = projection.projectToPdf(idaPoints[i]);
-            canvas.lineTo(pt.x, pt.y);
+          canvas.setLineDashPattern();
+          canvas.moveTo(idaPdf.first.x, idaPdf.first.y);
+          for (int i = 1; i < idaPdf.length; i++) {
+            canvas.lineTo(idaPdf[i].x, idaPdf[i].y);
           }
           canvas.strokePath();
 
-          // 2c. Flechas direccionales espaciadas en sentido IDA
+          // Flechas direccionales en sentido IDA
           _drawDirectionalChevrons(
             canvas: canvas,
-            points: idaPoints,
-            projection: projection,
+            points: idaPdf,
             color: idaColor,
-            spacingMeters: 1800.0,
+            spacingPoints: 120.0,
           );
         }
 
@@ -983,11 +1008,17 @@ class CartographicPdfService {
         }
 
         // 4. Cabecera Inicial / Origen (Círculo Verde esmeralda)
-        final originPoint = idaPoints.isNotEmpty
-            ? idaPoints.first
-            : (vueltaPoints.isNotEmpty ? vueltaPoints.first : null);
-        if (originPoint != null) {
-          final firstPt = projection.projectToPdf(originPoint);
+        if (idaPdf.isNotEmpty) {
+          final firstPt = idaPdf.first;
+          canvas.setFillColor(const PdfColor(0.1, 0.65, 0.2));
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(2.0);
+          canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
+          canvas.fillPath();
+          canvas.drawEllipse(firstPt.x, firstPt.y, 7.0, 7.0);
+          canvas.strokePath();
+        } else if (vueltaPdf.isNotEmpty) {
+          final firstPt = vueltaPdf.first;
           canvas.setFillColor(const PdfColor(0.1, 0.65, 0.2));
           canvas.setStrokeColor(PdfColors.white);
           canvas.setLineWidth(2.0);
@@ -998,11 +1029,17 @@ class CartographicPdfService {
         }
 
         // 5. Cabecera Final / Terminal de Destino (Círculo Granate Lanús)
-        final destPoint = idaPoints.isNotEmpty
-            ? idaPoints.last
-            : (vueltaPoints.isNotEmpty ? vueltaPoints.last : null);
-        if (destPoint != null) {
-          final lastPt = projection.projectToPdf(destPoint);
+        if (idaPdf.isNotEmpty) {
+          final lastPt = idaPdf.last;
+          canvas.setFillColor(granateLanus);
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(2.0);
+          canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
+          canvas.fillPath();
+          canvas.drawEllipse(lastPt.x, lastPt.y, 7.0, 7.0);
+          canvas.strokePath();
+        } else if (vueltaPdf.isNotEmpty) {
+          final lastPt = vueltaPdf.last;
           canvas.setFillColor(granateLanus);
           canvas.setStrokeColor(PdfColors.white);
           canvas.setLineWidth(2.0);
@@ -1021,10 +1058,11 @@ class CartographicPdfService {
     required List<PdfColor> branchColors,
     required MercatorViewportProjection projection,
     List<LatLng> lanusBoundaryPoints = const [],
+    bool includeStops = true,
   }) {
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
-        // 0. Límite Jurisdiccional Oficial del Partido de Lanús
+        // 0. Límite Jurisdiccional Oficial del Partido de Lanús (si está habilitado)
         if (lanusBoundaryPoints.isNotEmpty) {
           canvas.setStrokeColor(PdfColors.white);
           canvas.setLineWidth(4.0);
@@ -1049,85 +1087,137 @@ class CartographicPdfService {
           canvas.setLineDashPattern();
         }
 
+        // Preparar puntos proyectados y desplazados por ramal
+        final branchDataList = <({List<PdfPoint> ida, List<PdfPoint> vuelta, PdfColor color})>[];
         for (int b = 0; b < branchesData.length; b++) {
           final data = branchesData[b];
           final color = branchColors[b % branchColors.length];
-          final idaPoints = data.effectiveIdaPoints;
-          final vueltaPoints = data.effectiveVueltaPoints;
+          final hasBoth = data.effectiveIdaPoints.isNotEmpty && data.effectiveVueltaPoints.isNotEmpty;
+          final pIda = data.effectiveIdaPoints.map((p) => projection.projectToPdf(p)).toList();
+          final pVuelta = data.effectiveVueltaPoints.map((p) => projection.projectToPdf(p)).toList();
 
-          // 1. RECORRIDO VUELTA (Línea con espacios / discontinua)
-          if (vueltaPoints.isNotEmpty) {
+          final idaPdf = hasBoth ? _computeOffsetPolyline(pIda, 2.0) : pIda;
+          final vueltaPdf = hasBoth ? _computeOffsetPolyline(pVuelta, 2.0) : pVuelta;
+          branchDataList.add((ida: idaPdf, vuelta: vueltaPdf, color: color));
+        }
+
+        // 1. Halos blancos de todos los ramales
+        for (final item in branchDataList) {
+          if (item.vuelta.isNotEmpty) {
             canvas.setStrokeColor(PdfColors.white);
             canvas.setLineWidth(4.8);
             canvas.setLineDashPattern(const [6, 4], 0);
-            final firstV = projection.projectToPdf(vueltaPoints.first);
-            canvas.moveTo(firstV.x, firstV.y);
-            for (int i = 1; i < vueltaPoints.length; i++) {
-              final pt = projection.projectToPdf(vueltaPoints[i]);
-              canvas.lineTo(pt.x, pt.y);
+            canvas.moveTo(item.vuelta.first.x, item.vuelta.first.y);
+            for (int i = 1; i < item.vuelta.length; i++) {
+              canvas.lineTo(item.vuelta[i].x, item.vuelta[i].y);
             }
             canvas.strokePath();
+            canvas.setLineDashPattern();
+          }
+          if (item.ida.isNotEmpty) {
+            canvas.setStrokeColor(PdfColors.white);
+            canvas.setLineWidth(4.8);
+            canvas.setLineDashPattern();
+            canvas.moveTo(item.ida.first.x, item.ida.first.y);
+            for (int i = 1; i < item.ida.length; i++) {
+              canvas.lineTo(item.ida[i].x, item.ida[i].y);
+            }
+            canvas.strokePath();
+          }
+        }
 
-            canvas.setStrokeColor(color);
+        // 2. Trazas coloreadas y chevrons
+        for (final item in branchDataList) {
+          // Vuelta (discontinua con espacios)
+          if (item.vuelta.isNotEmpty) {
+            canvas.setStrokeColor(item.color);
             canvas.setLineWidth(2.8);
             canvas.setLineDashPattern(const [6, 4], 0);
-            canvas.moveTo(firstV.x, firstV.y);
-            for (int i = 1; i < vueltaPoints.length; i++) {
-              final pt = projection.projectToPdf(vueltaPoints[i]);
-              canvas.lineTo(pt.x, pt.y);
+            canvas.moveTo(item.vuelta.first.x, item.vuelta.first.y);
+            for (int i = 1; i < item.vuelta.length; i++) {
+              canvas.lineTo(item.vuelta[i].x, item.vuelta[i].y);
             }
             canvas.strokePath();
             canvas.setLineDashPattern();
 
             _drawDirectionalChevrons(
               canvas: canvas,
-              points: vueltaPoints,
-              projection: projection,
-              color: color,
-              spacingMeters: 2200.0,
+              points: item.vuelta,
+              color: item.color,
+              spacingPoints: 140.0,
             );
           }
 
-          // 2. RECORRIDO IDA (Línea continua)
-          if (idaPoints.isNotEmpty) {
-            canvas.setStrokeColor(PdfColors.white);
-            canvas.setLineWidth(4.8);
-            canvas.setLineDashPattern();
-            final firstI = projection.projectToPdf(idaPoints.first);
-            canvas.moveTo(firstI.x, firstI.y);
-            for (int i = 1; i < idaPoints.length; i++) {
-              final pt = projection.projectToPdf(idaPoints[i]);
-              canvas.lineTo(pt.x, pt.y);
-            }
-            canvas.strokePath();
-
-            canvas.setStrokeColor(color);
+          // Ida (continua)
+          if (item.ida.isNotEmpty) {
+            canvas.setStrokeColor(item.color);
             canvas.setLineWidth(2.8);
-            canvas.moveTo(firstI.x, firstI.y);
-            for (int i = 1; i < idaPoints.length; i++) {
-              final pt = projection.projectToPdf(idaPoints[i]);
-              canvas.lineTo(pt.x, pt.y);
+            canvas.setLineDashPattern();
+            canvas.moveTo(item.ida.first.x, item.ida.first.y);
+            for (int i = 1; i < item.ida.length; i++) {
+              canvas.lineTo(item.ida[i].x, item.ida[i].y);
             }
             canvas.strokePath();
 
             _drawDirectionalChevrons(
               canvas: canvas,
-              points: idaPoints,
-              projection: projection,
-              color: color,
-              spacingMeters: 2200.0,
+              points: item.ida,
+              color: item.color,
+              spacingPoints: 140.0,
             );
           }
+        }
 
-          // 3. Cabecera Inicial del Ramal
-          if (idaPoints.isNotEmpty) {
-            final orig = projection.projectToPdf(idaPoints.first);
-            canvas.setFillColor(PdfColors.white);
-            canvas.drawEllipse(orig.x, orig.y, 4.5, 4.5);
+        // 3. Paradas intermedias
+        if (includeStops) {
+          for (int b = 0; b < branchesData.length; b++) {
+            final data = branchesData[b];
+            final color = branchColors[b % branchColors.length];
+            if (data.stopPoints.isNotEmpty) {
+              canvas.setFillColor(color);
+              canvas.setStrokeColor(PdfColors.white);
+              canvas.setLineWidth(1.0);
+              for (final stop in data.stopPoints) {
+                final spt = projection.projectToPdf(stop);
+                canvas.drawEllipse(spt.x, spt.y, 3.0, 3.0);
+                canvas.fillPath();
+                canvas.drawEllipse(spt.x, spt.y, 3.0, 3.0);
+                canvas.strokePath();
+              }
+            }
+          }
+        }
+
+        // 4. Cabeceras
+        for (int b = 0; b < branchesData.length; b++) {
+          final data = branchesData[b];
+          final color = branchColors[b % branchColors.length];
+          final oPoint = data.effectiveIdaPoints.isNotEmpty
+              ? data.effectiveIdaPoints.first
+              : (data.effectiveVueltaPoints.isNotEmpty ? data.effectiveVueltaPoints.first : null);
+          if (oPoint != null) {
+            final p = projection.projectToPdf(oPoint);
+            canvas.setFillColor(const PdfColor(0.1, 0.65, 0.2));
+            canvas.setStrokeColor(PdfColors.white);
+            canvas.setLineWidth(1.5);
+            canvas.drawEllipse(p.x, p.y, 5.5, 5.5);
             canvas.fillPath();
+            canvas.drawEllipse(p.x, p.y, 5.5, 5.5);
+            canvas.strokePath();
+          }
+
+          final dPoint = data.effectiveIdaPoints.isNotEmpty
+              ? data.effectiveIdaPoints.last
+              : (data.effectiveVueltaPoints.isNotEmpty ? data.effectiveVueltaPoints.last : null);
+          if (dPoint != null) {
+            final p = projection.projectToPdf(dPoint);
             canvas.setFillColor(color);
-            canvas.drawEllipse(orig.x, orig.y, 3.2, 3.2);
+            canvas.setStrokeColor(PdfColors.white);
+            canvas.setLineWidth(1.5);
+            canvas.drawEllipse(p.x, p.y, 5.5, 5.5);
             canvas.fillPath();
+            canvas.drawEllipse(p.x, p.y, 5.5, 5.5);
+            canvas.strokePath();
           }
         }
       },
@@ -1403,6 +1493,22 @@ class CartographicPdfService {
                       ),
                     ),
                   ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                    color: PdfColors.grey100,
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
+                      children: [
+                        pw.Container(width: 10, height: 2.5, color: azulArquitectura),
+                        pw.SizedBox(width: 3),
+                        pw.Text('Traza Continua: IDA', style: pw.TextStyle(fontSize: fontSizeVal * 0.72, fontWeight: pw.FontWeight.bold, color: azulArquitectura)),
+                        pw.SizedBox(width: 8),
+                        _buildLineSwatch(color: azulArquitectura, isDashed: true),
+                        pw.SizedBox(width: 3),
+                        pw.Text('Traza con Espacios: VUELTA', style: pw.TextStyle(fontSize: fontSizeVal * 0.72, fontWeight: pw.FontWeight.bold, color: azulArquitectura)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1436,23 +1542,68 @@ class CartographicPdfService {
       ],
     );
   }
+  static List<PdfPoint> _computeOffsetPolyline(List<PdfPoint> points, double offsetDistance) {
+    if (points.length < 2 || offsetDistance.abs() < 0.01) return points;
+    final n = points.length;
+    final result = <PdfPoint>[];
+
+    final segmentNormals = <PdfPoint>[];
+    for (int i = 0; i < n - 1; i++) {
+      final dx = points[i + 1].x - points[i].x;
+      final dy = points[i + 1].y - points[i].y;
+      final len = math.sqrt(dx * dx + dy * dy);
+      if (len > 0.0001) {
+        segmentNormals.add(PdfPoint(dy / len, -dx / len));
+      } else {
+        segmentNormals.add(segmentNormals.isNotEmpty ? segmentNormals.last : const PdfPoint(0, 0));
+      }
+    }
+
+    for (int i = 0; i < n; i++) {
+      PdfPoint normal;
+      if (i == 0) {
+        normal = segmentNormals.first;
+      } else if (i == n - 1) {
+        normal = segmentNormals.last;
+      } else {
+        final n1 = segmentNormals[i - 1];
+        final n2 = segmentNormals[i];
+        final avgX = (n1.x + n2.x) * 0.5;
+        final avgY = (n1.y + n2.y) * 0.5;
+        final avgLen = math.sqrt(avgX * avgX + avgY * avgY);
+        if (avgLen > 0.001) {
+          final factor = math.min(1.8, 1.0 / avgLen);
+          normal = PdfPoint((avgX / avgLen) * factor, (avgY / avgLen) * factor);
+        } else {
+          normal = n1;
+        }
+      }
+      result.add(PdfPoint(
+        points[i].x + normal.x * offsetDistance,
+        points[i].y + normal.y * offsetDistance,
+      ));
+    }
+    return result;
+  }
+
   static void _drawDirectionalChevrons({
     required PdfGraphics canvas,
-    required List<LatLng> points,
-    required MercatorViewportProjection projection,
+    required List<PdfPoint> points,
     required PdfColor color,
-    double spacingMeters = 1800.0,
+    double spacingPoints = 120.0,
   }) {
-    if (points.length < 3) return;
+    if (points.length < 2) return;
 
     double totalDist = 0.0;
     for (int i = 0; i < points.length - 1; i++) {
-      totalDist += _distanceMeters(points[i], points[i + 1]);
+      final dx = points[i + 1].x - points[i].x;
+      final dy = points[i + 1].y - points[i].y;
+      totalDist += math.sqrt(dx * dx + dy * dy);
     }
 
-    final effectiveSpacing = totalDist < 4000.0
-        ? (totalDist / 3.0).clamp(700.0, 2000.0)
-        : spacingMeters;
+    final effectiveSpacing = totalDist < 250.0
+        ? (totalDist / 3.0).clamp(40.0, 100.0)
+        : spacingPoints;
 
     double accumulated = 0.0;
     double distFromStart = 0.0;
@@ -1460,31 +1611,22 @@ class CartographicPdfService {
     for (int i = 0; i < points.length - 1; i++) {
       final pA = points[i];
       final pB = points[i + 1];
-      final d = _distanceMeters(pA, pB);
-      accumulated += d;
-      distFromStart += d;
+      final dx = pB.x - pA.x;
+      final dy = pB.y - pA.y;
+      final segLen = math.sqrt(dx * dx + dy * dy);
+      if (segLen < 0.001) continue;
 
-      // Colocar flecha cuando se alcance el intervalo, evitando extremos
+      accumulated += segLen;
+      distFromStart += segLen;
+
       if (accumulated >= effectiveSpacing &&
-          distFromStart >= 500.0 &&
-          (totalDist - distFromStart) >= 500.0) {
-        final pdfA = projection.projectToPdf(pA);
-        final pdfB = projection.projectToPdf(pB);
+          distFromStart >= 25.0 &&
+          (totalDist - distFromStart) >= 25.0) {
+        final angle = math.atan2(dy, dx);
+        final midX = (pA.x + pB.x) / 2.0;
+        final midY = (pA.y + pB.y) / 2.0;
 
-        final dx = pdfB.x - pdfA.x;
-        final dy = pdfB.y - pdfA.y;
-        final segLen = math.sqrt(dx * dx + dy * dy);
-
-        double angle = math.atan2(dy, dx);
-        if (segLen < 3.0 && i + 2 < points.length) {
-          final pdfNext = projection.projectToPdf(points[i + 2]);
-          angle = math.atan2(pdfNext.y - pdfA.y, pdfNext.x - pdfA.x);
-        }
-
-        final midX = (pdfA.x + pdfB.x) / 2.0;
-        final midY = (pdfA.y + pdfB.y) / 2.0;
-
-        _drawChevronTriangle(canvas, midX, midY, angle, color, size: 7.0);
+        _drawChevronTriangle(canvas, midX, midY, angle, color, size: 6.5);
         accumulated = 0.0;
       }
     }
@@ -1753,8 +1895,8 @@ class CartographicPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  if (data.hasIda && data.hasVuelta && data.idaDistanceKm != null) ...[
-                    _buildMetricRow('Longitud Ida / Vuelta:', '${data.idaDistanceKm!.toStringAsFixed(1)} / ${(data.vueltaDistanceKm ?? 0).toStringAsFixed(1)} km', fontSizeVal),
+                  if (data.hasIda && data.hasVuelta) ...[
+                    _buildMetricRow('Longitud Ida / Vuelta:', '${data.effectiveIdaDistanceKm.toStringAsFixed(1)} / ${data.effectiveVueltaDistanceKm.toStringAsFixed(1)} km', fontSizeVal),
                     _buildMetricRow('Distancia Total:', '${data.distanceKm.toStringAsFixed(1)} km', fontSizeVal),
                   ] else ...[
                     _buildMetricRow('Longitud Total:', '${data.distanceKm.toStringAsFixed(2)} km', fontSizeVal),
@@ -1806,18 +1948,14 @@ class CartographicPdfService {
                     _buildLegendRow(
                       swatch: _buildLineSwatch(color: idaColor, isDashed: false),
                       label: 'Recorrido IDA (Traza Continua)',
-                      distText: data.idaDistanceKm != null && data.idaDistanceKm! > 0
-                          ? '${data.idaDistanceKm!.toStringAsFixed(1)} km'
-                          : null,
+                      distText: '${data.effectiveIdaDistanceKm.toStringAsFixed(1)} km',
                       fontSize: fontSizeVal,
                     ),
                   if (data.hasVuelta)
                     _buildLegendRow(
                       swatch: _buildLineSwatch(color: vueltaColor, isDashed: true),
                       label: 'Recorrido VUELTA (Traza Discontinua)',
-                      distText: data.vueltaDistanceKm != null && data.vueltaDistanceKm! > 0
-                          ? '${data.vueltaDistanceKm!.toStringAsFixed(1)} km'
-                          : null,
+                      distText: '${data.effectiveVueltaDistanceKm.toStringAsFixed(1)} km',
                       fontSize: fontSizeVal,
                     ),
                   _buildLegendRow(

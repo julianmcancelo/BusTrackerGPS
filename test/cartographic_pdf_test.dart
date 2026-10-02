@@ -348,5 +348,62 @@ void main() {
       expect(bytes, isA<Uint8List>());
       expect(bytes.isNotEmpty, isTrue);
     });
+
+    test('CartographicRouteData automatically derives return trajectory for AMBOS when only ida is supplied', () {
+      final route = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal B',
+        direction: 'AMBOS',
+        polylinePoints: const [
+          LatLng(-34.7050, -58.3920),
+          LatLng(-34.7080, -58.3890),
+          LatLng(-34.7120, -58.3850),
+        ],
+        distanceKm: 10.0,
+        date: DateTime.now(),
+      );
+
+      expect(route.hasIda, isTrue);
+      expect(route.hasVuelta, isTrue);
+      expect(route.effectiveIdaPoints.length, equals(3));
+      expect(route.effectiveVueltaPoints.length, equals(3));
+      // First point of Vuelta should be the last point of Ida
+      expect(route.effectiveVueltaPoints.first, equals(const LatLng(-34.7120, -58.3850)));
+      expect(route.effectiveIdaDistanceKm, equals(5.0));
+      expect(route.effectiveVueltaDistanceKm, equals(5.0));
+    });
+
+    test('generates valid PDF bytes with both parallel lanes for IDA and VUELTA', () async {
+      final route = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal B',
+        direction: 'AMBOS',
+        idaPoints: const [
+          LatLng(-34.7050, -58.3920),
+          LatLng(-34.7080, -58.3890),
+          LatLng(-34.7120, -58.3850),
+        ],
+        vueltaPoints: const [
+          LatLng(-34.7120, -58.3850),
+          LatLng(-34.7080, -58.3890),
+          LatLng(-34.7050, -58.3920),
+        ],
+        distanceKm: 10.0,
+        idaDistanceKm: 5.0,
+        vueltaDistanceKm: 5.0,
+        date: DateTime.now(),
+      );
+
+      final bytes = await CartographicPdfService.generateSheetBytes(
+        data: route,
+        format: CartographicSheetFormat.a3,
+        includeBasemap: false,
+      );
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+      expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
+    });
   });
 }

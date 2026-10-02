@@ -13,6 +13,7 @@ class CartographicExportDialog extends StatefulWidget {
   final String? lineNumber;
   final String? lineName;
   final int? initialSelectedBranchIndex;
+  final TransitDirectionFilter initialDirectionFilter;
 
   const CartographicExportDialog({
     super.key,
@@ -21,14 +22,22 @@ class CartographicExportDialog extends StatefulWidget {
     this.lineNumber,
     this.lineName,
     this.initialSelectedBranchIndex,
+    this.initialDirectionFilter = TransitDirectionFilter.both,
   }) : assert(routeData != null || branchesData != null, 'routeData o branchesData deben ser provistos');
 
   /// Muestra el diálogo para una única traza o recorrido individual (compatibilidad total)
-  static Future<void> show(BuildContext context, {required CartographicRouteData routeData}) {
+  static Future<void> show(
+    BuildContext context, {
+    required CartographicRouteData routeData,
+    TransitDirectionFilter initialDirectionFilter = TransitDirectionFilter.both,
+  }) {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => CartographicExportDialog(routeData: routeData),
+      builder: (_) => CartographicExportDialog(
+        routeData: routeData,
+        initialDirectionFilter: initialDirectionFilter,
+      ),
     );
   }
 
@@ -39,6 +48,7 @@ class CartographicExportDialog extends StatefulWidget {
     String? lineNumber,
     String? lineName,
     int? initialSelectedBranchIndex,
+    TransitDirectionFilter initialDirectionFilter = TransitDirectionFilter.both,
   }) {
     return showDialog(
       context: context,
@@ -48,6 +58,7 @@ class CartographicExportDialog extends StatefulWidget {
         lineNumber: lineNumber,
         lineName: lineName,
         initialSelectedBranchIndex: initialSelectedBranchIndex,
+        initialDirectionFilter: initialDirectionFilter,
       ),
     );
   }
@@ -67,12 +78,22 @@ class CartographicExportDialog extends StatefulWidget {
       if (initialBranch != null && b.branch.id == initialBranch.branch.id) {
         initialIndex = i;
       }
-      final isIda = directionFilter == TransitDirectionFilter.ida;
-      final isVuelta = directionFilter == TransitDirectionFilter.vuelta;
-      final idaPts = (!isVuelta) ? b.idaPoints : const <LatLng>[];
-      final vueltaPts = (!isIda) ? b.vueltaPoints : const <LatLng>[];
-      final distKm = b.totalDistanceKm > 0
-          ? (isIda ? b.idaDistanceKm : (isVuelta ? b.vueltaDistanceKm : b.totalDistanceKm))
+      var idaPts = List<LatLng>.from(b.idaPoints);
+      var vueltaPts = List<LatLng>.from(b.vueltaPoints);
+      var idaKm = b.idaDistanceKm;
+      var vueltaKm = b.vueltaDistanceKm;
+
+      // Si una rama solo tiene registrada una dirección en BD, deducir la contraria para permitir ver ambos sentidos
+      if (idaPts.isEmpty && vueltaPts.isNotEmpty) {
+        idaPts = vueltaPts.reversed.toList();
+        idaKm = vueltaKm;
+      } else if (vueltaPts.isEmpty && idaPts.isNotEmpty) {
+        vueltaPts = idaPts.reversed.toList();
+        vueltaKm = idaKm;
+      }
+
+      final distKm = (idaKm + vueltaKm) > 0
+          ? (idaKm + vueltaKm)
           : ((idaPts.length + vueltaPts.length) * 0.05);
 
       branchesData.add(
@@ -80,14 +101,14 @@ class CartographicExportDialog extends StatefulWidget {
           lineNumber: line.number,
           lineName: line.name,
           branchName: b.branch.name,
-          direction: directionFilter.label,
+          direction: 'AMBOS',
           polylinePoints: [...idaPts, ...vueltaPts],
           idaPoints: idaPts,
           vueltaPoints: vueltaPts,
           stopPoints: const [],
           distanceKm: distKm,
-          idaDistanceKm: b.idaDistanceKm,
-          vueltaDistanceKm: b.vueltaDistanceKm,
+          idaDistanceKm: idaKm,
+          vueltaDistanceKm: vueltaKm,
           date: DateTime.now(),
           routeNotes: 'Red de Transporte Público Oficial · Municipio de Lanús',
         ),
@@ -107,6 +128,7 @@ class CartographicExportDialog extends StatefulWidget {
       lineNumber: line.number,
       lineName: line.name,
       initialSelectedBranchIndex: initialIndex,
+      initialDirectionFilter: directionFilter,
     );
   }
 
@@ -125,6 +147,7 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
   bool _isExporting = false;
   String? _exportProgressMessage;
 
+  late TransitDirectionFilter _selectedDirection;
   late List<CartographicRouteData> _allBranches;
   late Set<int> _selectedIndices;
   MultiBranchExportMode _exportMode = MultiBranchExportMode.multiPageBooklet;
@@ -132,18 +155,97 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
   @override
   void initState() {
     super.initState();
+    _selectedDirection = widget.initialDirectionFilter;
     if (widget.branchesData != null && widget.branchesData!.isNotEmpty) {
       _allBranches = widget.branchesData!;
       // Si se especificó un ramal inicial, seleccionamos todos por defecto pero aseguramos foco
       _selectedIndices = List.generate(_allBranches.length, (i) => i).toSet();
     } else {
-      _allBranches = [widget.routeData!];
+      var rd = widget.routeData!;
+      if (rd.idaPoints.isEmpty && rd.vueltaPoints.isEmpty && rd.polylinePoints.isNotEmpty) {
+        final halfKm = rd.distanceKm > 0 ? (rd.distanceKm / 2) : 0.0;
+        rd = CartographicRouteData(
+          lineNumber: rd.lineNumber,
+          lineName: rd.lineName,
+          branchName: rd.branchName,
+          direction: 'AMBOS',
+          polylinePoints: rd.polylinePoints,
+          idaPoints: rd.polylinePoints,
+          vueltaPoints: rd.polylinePoints.reversed.toList(),
+          stopPoints: rd.stopPoints,
+          distanceKm: rd.distanceKm,
+          idaDistanceKm: rd.idaDistanceKm ?? halfKm,
+          vueltaDistanceKm: rd.vueltaDistanceKm ?? halfKm,
+          idaStreets: rd.idaStreets,
+          vueltaStreets: rd.vueltaStreets,
+          inspectorName: rd.inspectorName,
+          internalNumber: rd.internalNumber,
+          domain: rd.domain,
+          date: rd.date,
+          routeNotes: rd.routeNotes,
+        );
+      }
+      _allBranches = [rd];
       _selectedIndices = {0};
     }
   }
 
   List<CartographicRouteData> get _effectiveSelectedBranches {
-    return _selectedIndices.map((i) => _allBranches[i]).toList();
+    return _selectedIndices.map((i) {
+      final raw = _allBranches[i];
+      switch (_selectedDirection) {
+        case TransitDirectionFilter.both:
+          return raw;
+        case TransitDirectionFilter.ida:
+          final pts = raw.idaPoints.isNotEmpty ? raw.idaPoints : raw.polylinePoints;
+          final dist = raw.effectiveIdaDistanceKm;
+          return CartographicRouteData(
+            lineNumber: raw.lineNumber,
+            lineName: raw.lineName,
+            branchName: raw.branchName,
+            direction: 'IDA',
+            polylinePoints: pts,
+            idaPoints: pts,
+            vueltaPoints: const [],
+            stopPoints: raw.stopPoints,
+            distanceKm: dist,
+            idaDistanceKm: dist,
+            vueltaDistanceKm: 0.0,
+            idaStreets: raw.idaStreets,
+            vueltaStreets: const [],
+            inspectorName: raw.inspectorName,
+            internalNumber: raw.internalNumber,
+            domain: raw.domain,
+            date: raw.date,
+            routeNotes: raw.routeNotes,
+          );
+        case TransitDirectionFilter.vuelta:
+          final pts = raw.vueltaPoints.isNotEmpty
+              ? raw.vueltaPoints
+              : (raw.idaPoints.isNotEmpty ? raw.idaPoints.reversed.toList() : raw.polylinePoints.reversed.toList());
+          final dist = raw.effectiveVueltaDistanceKm > 0 ? raw.effectiveVueltaDistanceKm : raw.effectiveIdaDistanceKm;
+          return CartographicRouteData(
+            lineNumber: raw.lineNumber,
+            lineName: raw.lineName,
+            branchName: raw.branchName,
+            direction: 'VUELTA',
+            polylinePoints: pts,
+            idaPoints: const [],
+            vueltaPoints: pts,
+            stopPoints: raw.stopPoints,
+            distanceKm: dist,
+            idaDistanceKm: 0.0,
+            vueltaDistanceKm: dist,
+            idaStreets: const [],
+            vueltaStreets: raw.vueltaStreets,
+            inspectorName: raw.inspectorName,
+            internalNumber: raw.internalNumber,
+            domain: raw.domain,
+            date: raw.date,
+            routeNotes: raw.routeNotes,
+          );
+      }
+    }).toList();
   }
 
   @override
@@ -256,8 +358,8 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                           const SizedBox(height: 2),
                           Text(
                             hasMultiple
-                                ? '${_allBranches.length} ramales disponibles · ${_selectedIndices.length} seleccionados para imprimir'
-                                : 'Ramal ${_allBranches.first.branchName} · ${_allBranches.first.distanceKm.toStringAsFixed(1)} km',
+                                ? '${_allBranches.length} ramales disponibles · ${_selectedIndices.length} seleccionados · Sentido: ${_selectedDirection.label}'
+                                : 'Ramal ${_allBranches.first.branchName} · ${_allBranches.first.distanceKm.toStringAsFixed(1)} km · Sentido: ${_selectedDirection.label}',
                             style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
                           ),
                         ],
@@ -389,6 +491,35 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                   const SizedBox(height: 14),
                 ],
               ],
+
+              // 3.5 Selector de Sentido del Recorrido (Ida, Vuelta, Ambos)
+              const Text(
+                'SENTIDO DEL RECORRIDO',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 6),
+              SegmentedButton<TransitDirectionFilter>(
+                segments: const [
+                  ButtonSegment(
+                    value: TransitDirectionFilter.both,
+                    icon: Icon(Icons.sync_alt, size: 16),
+                    label: Text('Ambos (Ida y Vuelta)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  ),
+                  ButtonSegment(
+                    value: TransitDirectionFilter.ida,
+                    icon: Icon(Icons.arrow_forward, size: 16),
+                    label: Text('Solo Ida', style: TextStyle(fontSize: 11.5)),
+                  ),
+                  ButtonSegment(
+                    value: TransitDirectionFilter.vuelta,
+                    icon: Icon(Icons.arrow_back, size: 16),
+                    label: Text('Solo Vuelta', style: TextStyle(fontSize: 11.5)),
+                  ),
+                ],
+                selected: {_selectedDirection},
+                onSelectionChanged: (val) => setState(() => _selectedDirection = val.first),
+              ),
+              const SizedBox(height: 14),
 
               // 4. Selección de Formato de Papel (A4 a A0)
               const Text(
