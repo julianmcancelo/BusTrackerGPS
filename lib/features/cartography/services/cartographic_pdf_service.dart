@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -157,6 +158,45 @@ class CartographicPdfService {
     PdfColor.fromInt(0xFF4F46E5), // Índigo
   ];
 
+  static List<LatLng>? _cachedLanusBoundary;
+
+  /// Carga y cachea los puntos poligonales del límite oficial del Partido de Lanús desde assets/data/lanus_boundary.json
+  static Future<List<LatLng>> loadLanusBoundaryPoints() async {
+    if (_cachedLanusBoundary != null) return _cachedLanusBoundary!;
+    try {
+      String jsonStr = '';
+      try {
+        jsonStr = await rootBundle.loadString('assets/data/lanus_boundary.json');
+      } catch (_) {
+        try {
+          final f = File('assets/data/lanus_boundary.json');
+          if (f.existsSync()) {
+            jsonStr = f.readAsStringSync();
+          }
+        } catch (_) {}
+      }
+      if (jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is Map<String, dynamic> && decoded['coordinates'] is List) {
+          final ring = decoded['coordinates'][0] as List;
+          final pts = <LatLng>[];
+          for (final coord in ring) {
+            if (coord is List && coord.length >= 2) {
+              final lon = (coord[0] as num).toDouble();
+              final lat = (coord[1] as num).toDouble();
+              pts.add(LatLng(lat, lon));
+            }
+          }
+          if (pts.isNotEmpty) {
+            _cachedLanusBoundary = pts;
+            return pts;
+          }
+        }
+      }
+    } catch (_) {}
+    return const [];
+  }
+
   static Future<Uint8List?> _loadOfficialLogoBytes() async {
     try {
       final byteData = await rootBundle.load('assets/images/lanus_logo.png');
@@ -177,11 +217,15 @@ class CartographicPdfService {
     bool isLandscape = true,
     bool includeBasemap = true,
     MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
   }) async {
     final pdf = pw.Document();
     final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
     final margin = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1 ? 36.0 : 20.0;
     final logoBytes = await _loadOfficialLogoBytes();
+    final lanusPoints = includeLanusBoundary ? await loadLanusBoundaryPoints() : const <LatLng>[];
 
     final page = await _buildBranchPage(
       data: data,
@@ -191,6 +235,10 @@ class CartographicPdfService {
       includeBasemap: includeBasemap,
       mapboxStyle: mapboxStyle,
       logoBytes: logoBytes,
+      lanusBoundaryPoints: lanusPoints,
+      includeStops: includeStops,
+      includeOperationalMetrics: includeOperationalMetrics,
+      includeLanusBoundary: includeLanusBoundary,
     );
 
     pdf.addPage(page);
@@ -207,6 +255,9 @@ class CartographicPdfService {
     bool includeBasemap = true,
     MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
     MultiBranchExportMode mode = MultiBranchExportMode.multiPageBooklet,
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
     void Function(int current, int total, String status)? onProgress,
   }) async {
     if (branchesData.isEmpty) {
@@ -219,6 +270,9 @@ class CartographicPdfService {
         isLandscape: isLandscape,
         includeBasemap: includeBasemap,
         mapboxStyle: mapboxStyle,
+        includeStops: includeStops,
+        includeOperationalMetrics: includeOperationalMetrics,
+        includeLanusBoundary: includeLanusBoundary,
       );
     }
 
@@ -226,6 +280,7 @@ class CartographicPdfService {
     final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
     final margin = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1 ? 36.0 : 20.0;
     final logoBytes = await _loadOfficialLogoBytes();
+    final lanusPoints = includeLanusBoundary ? await loadLanusBoundaryPoints() : const <LatLng>[];
 
     if (mode == MultiBranchExportMode.singleConsolidatedSheet) {
       onProgress?.call(1, 1, 'Generando plano consolidado de conjunto...');
@@ -237,6 +292,10 @@ class CartographicPdfService {
         includeBasemap: includeBasemap,
         mapboxStyle: mapboxStyle,
         logoBytes: logoBytes,
+        lanusBoundaryPoints: lanusPoints,
+        includeStops: includeStops,
+        includeOperationalMetrics: includeOperationalMetrics,
+        includeLanusBoundary: includeLanusBoundary,
       );
       pdf.addPage(page);
     } else {
@@ -256,6 +315,10 @@ class CartographicPdfService {
           includeBasemap: includeBasemap,
           mapboxStyle: mapboxStyle,
           logoBytes: logoBytes,
+          lanusBoundaryPoints: lanusPoints,
+          includeStops: includeStops,
+          includeOperationalMetrics: includeOperationalMetrics,
+          includeLanusBoundary: includeLanusBoundary,
           pageNumber: i + 1,
           totalPages: branchesData.length,
         );
@@ -275,6 +338,10 @@ class CartographicPdfService {
     required bool includeBasemap,
     required MapboxStyle mapboxStyle,
     required Uint8List? logoBytes,
+    List<LatLng> lanusBoundaryPoints = const [],
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
     int? pageNumber,
     int? totalPages,
   }) async {
@@ -386,6 +453,8 @@ class CartographicPdfService {
                               projection: projection,
                               idaColor: linePdfColor,
                               vueltaColor: vueltaPdfColor,
+                              lanusBoundaryPoints: lanusBoundaryPoints,
+                              includeStops: includeStops,
                             ),
                           ),
                           pw.Positioned(
@@ -411,7 +480,16 @@ class CartographicPdfService {
                       height: hojaRutaHeight,
                       isLarge: isPlotterLarge,
                     ),
-                  _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor, vueltaPdfColor),
+                  _buildArchitecturalCarature(
+                    data,
+                    format,
+                    caratureHeight,
+                    linePdfColor,
+                    vueltaPdfColor,
+                    includeStops: includeStops,
+                    includeOperationalMetrics: includeOperationalMetrics,
+                    includeLanusBoundary: includeLanusBoundary,
+                  ),
                 ],
               ),
             ),
@@ -430,6 +508,10 @@ class CartographicPdfService {
     required bool includeBasemap,
     required MapboxStyle mapboxStyle,
     required Uint8List? logoBytes,
+    List<LatLng> lanusBoundaryPoints = const [],
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
   }) async {
     final allRoutePoints = [for (final b in branchesData) ...b.allPoints];
     final bounds = _calculateSafeBounds(allRoutePoints);
@@ -520,6 +602,7 @@ class CartographicPdfService {
                               branchesData: branchesData,
                               branchColors: branchColors,
                               projection: projection,
+                              lanusBoundaryPoints: lanusBoundaryPoints,
                             ),
                           ),
                           pw.Positioned(
@@ -547,6 +630,9 @@ class CartographicPdfService {
                     branchColors: branchColors,
                     format: format,
                     height: caratureHeight,
+                    includeStops: includeStops,
+                    includeOperationalMetrics: includeOperationalMetrics,
+                    includeLanusBoundary: includeLanusBoundary,
                   ),
                 ],
               ),
@@ -763,20 +849,50 @@ class CartographicPdfService {
   /// Traza vectorial exacta proyectada mediante Web Mercator isométrica:
   /// - IDA: línea continua sólida con flechas direccionales espaciadas.
   /// - VUELTA: línea discontinua con espacios y flechas direccionales.
+  /// - LÍMITE LANÚS: trazo técnico perimetral oficial (si está activado).
   static pw.Widget _buildVectorPolyline({
     required CartographicRouteData data,
     required MercatorViewportProjection projection,
     required PdfColor idaColor,
     required PdfColor vueltaColor,
+    List<LatLng> lanusBoundaryPoints = const [],
+    bool includeStops = true,
   }) {
     final idaPoints = data.effectiveIdaPoints;
     final vueltaPoints = data.effectiveVueltaPoints;
     final stops = data.stopPoints;
 
-    if (idaPoints.isEmpty && vueltaPoints.isEmpty) return pw.SizedBox();
+    if (idaPoints.isEmpty && vueltaPoints.isEmpty && lanusBoundaryPoints.isEmpty) return pw.SizedBox();
 
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
+        // 0. Límite Jurisdiccional Oficial del Partido de Lanús (si está habilitado)
+        if (lanusBoundaryPoints.isNotEmpty) {
+          // 0a. Halo blanco de contraste con trazo discontinuo
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(4.0);
+          canvas.setLineDashPattern(const [8, 4, 2, 4], 0);
+          final firstB = projection.projectToPdf(lanusBoundaryPoints.first);
+          canvas.moveTo(firstB.x, firstB.y);
+          for (int i = 1; i < lanusBoundaryPoints.length; i++) {
+            final pt = projection.projectToPdf(lanusBoundaryPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+
+          // 0b. Traza municipal oficial (Granate Lanús)
+          canvas.setStrokeColor(granateLanus);
+          canvas.setLineWidth(2.0);
+          canvas.setLineDashPattern(const [8, 4, 2, 4], 0);
+          canvas.moveTo(firstB.x, firstB.y);
+          for (int i = 1; i < lanusBoundaryPoints.length; i++) {
+            final pt = projection.projectToPdf(lanusBoundaryPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+          canvas.setLineDashPattern(); // Restaurar trazo continuo
+        }
+
         // 1. RECORRIDO VUELTA (Línea con espacios / discontinua)
         if (vueltaPoints.isNotEmpty) {
           // 1a. Halo blanco de contraste con patrón discontinuo
@@ -847,16 +963,18 @@ class CartographicPdfService {
           );
         }
 
-        // 3. Paradas intermedias registradas
-        canvas.setFillColor(idaColor);
-        canvas.setStrokeColor(PdfColors.white);
-        canvas.setLineWidth(1.2);
-        for (final stop in stops) {
-          final spt = projection.projectToPdf(stop);
-          canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
-          canvas.fillPath();
-          canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
-          canvas.strokePath();
+        // 3. Paradas intermedias registradas (condicional)
+        if (includeStops && stops.isNotEmpty) {
+          canvas.setFillColor(idaColor);
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(1.2);
+          for (final stop in stops) {
+            final spt = projection.projectToPdf(stop);
+            canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
+            canvas.fillPath();
+            canvas.drawEllipse(spt.x, spt.y, 3.5, 3.5);
+            canvas.strokePath();
+          }
         }
 
         // 4. Cabecera Inicial / Origen (Círculo Verde esmeralda)
@@ -897,9 +1015,35 @@ class CartographicPdfService {
     required List<CartographicRouteData> branchesData,
     required List<PdfColor> branchColors,
     required MercatorViewportProjection projection,
+    List<LatLng> lanusBoundaryPoints = const [],
   }) {
     return pw.CustomPaint(
       painter: (PdfGraphics canvas, PdfPoint size) {
+        // 0. Límite Jurisdiccional Oficial del Partido de Lanús
+        if (lanusBoundaryPoints.isNotEmpty) {
+          canvas.setStrokeColor(PdfColors.white);
+          canvas.setLineWidth(4.0);
+          canvas.setLineDashPattern(const [8, 4, 2, 4], 0);
+          final firstB = projection.projectToPdf(lanusBoundaryPoints.first);
+          canvas.moveTo(firstB.x, firstB.y);
+          for (int i = 1; i < lanusBoundaryPoints.length; i++) {
+            final pt = projection.projectToPdf(lanusBoundaryPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+
+          canvas.setStrokeColor(granateLanus);
+          canvas.setLineWidth(2.0);
+          canvas.setLineDashPattern(const [8, 4, 2, 4], 0);
+          canvas.moveTo(firstB.x, firstB.y);
+          for (int i = 1; i < lanusBoundaryPoints.length; i++) {
+            final pt = projection.projectToPdf(lanusBoundaryPoints[i]);
+            canvas.lineTo(pt.x, pt.y);
+          }
+          canvas.strokePath();
+          canvas.setLineDashPattern();
+        }
+
         for (int b = 0; b < branchesData.length; b++) {
           final data = branchesData[b];
           final color = branchColors[b % branchColors.length];
@@ -1059,6 +1203,9 @@ class CartographicPdfService {
     required List<PdfColor> branchColors,
     required CartographicSheetFormat format,
     required double height,
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
   }) {
     final isLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
     final fontSizeTitle = isLarge ? 15.0 : 10.0;
@@ -1169,7 +1316,11 @@ class CartographicPdfService {
                   _buildMetricRow('Red Total Consolidada:', '${totalKm.toStringAsFixed(1)} km', fontSizeVal),
                   _buildMetricRow('Ramales en Lámina:', '${branchesData.length} ramales', fontSizeVal),
                   _buildMetricRow('Puntos GPS Digitalizados:', '$totalPoints pts', fontSizeVal),
-                  _buildMetricRow('Paradas Registradas:', '$totalStops paradas', fontSizeVal),
+                  if (includeStops) _buildMetricRow('Paradas Registradas:', '$totalStops paradas', fontSizeVal),
+                  if (includeOperationalMetrics) ...[
+                    _buildMetricRow('Tiempo Medio de Ciclo:', '${_calculateEstimatedMinutes(totalKm / branchesData.length)} min', fontSizeVal),
+                    _buildMetricRow('Frecuencia Estimada:', '4 - 8 min', fontSizeVal),
+                  ],
                   _buildMetricRow('Fecha de Emisión:', DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()), fontSizeVal),
                 ],
               ),
@@ -1498,8 +1649,11 @@ class CartographicPdfService {
     CartographicSheetFormat format,
     double height,
     PdfColor idaColor,
-    PdfColor vueltaColor,
-  ) {
+    PdfColor vueltaColor, {
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
+  }) {
     final isLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
     final fontSizeTitle = isLarge ? 15.0 : 10.0;
     final fontSizeVal = isLarge ? 11.0 : 8.0;
@@ -1601,9 +1755,12 @@ class CartographicPdfService {
                     _buildMetricRow('Longitud Total:', '${data.distanceKm.toStringAsFixed(2)} km', fontSizeVal),
                     _buildMetricRow('Puntos GPS:', '${data.allPoints.length}', fontSizeVal),
                   ],
-                  _buildMetricRow('Tiempo de Viaje (est.):', '~${_calculateEstimatedMinutes(data.distanceKm)} min (Ciclo)', fontSizeVal),
-                  _buildMetricRow('Frecuencia Promedio:', _calculateFrequency(data.distanceKm), fontSizeVal),
-                  _buildMetricRow('Paradas Registradas:', '${data.stopPoints.length}', fontSizeVal),
+                  if (includeOperationalMetrics) ...[
+                    _buildMetricRow('Tiempo de Viaje:', '${_calculateEstimatedMinutes(data.distanceKm)} min (Ciclo)', fontSizeVal),
+                    _buildMetricRow('Frecuencia Estimada:', _calculateFrequency(data.distanceKm), fontSizeVal),
+                  ],
+                  if (includeStops)
+                    _buildMetricRow('Paradas Registradas:', '${data.stopPoints.length}', fontSizeVal),
                   _buildMetricRow('Fecha de Emisión:', DateFormat('dd/MM/yyyy HH:mm').format(data.date), fontSizeVal),
                 ],
               ),
@@ -1640,22 +1797,24 @@ class CartographicPdfService {
                       textAlign: pw.TextAlign.center,
                     ),
                   ),
-                  _buildLegendRow(
-                    swatch: _buildLineSwatch(color: idaColor, isDashed: false),
-                    label: 'Recorrido IDA (Traza Continua)',
-                    distText: data.idaDistanceKm != null && data.idaDistanceKm! > 0
-                        ? '${data.idaDistanceKm!.toStringAsFixed(1)} km'
-                        : null,
-                    fontSize: fontSizeVal,
-                  ),
-                  _buildLegendRow(
-                    swatch: _buildLineSwatch(color: vueltaColor, isDashed: true),
-                    label: 'Recorrido VUELTA (Traza Discontinua)',
-                    distText: data.vueltaDistanceKm != null && data.vueltaDistanceKm! > 0
-                        ? '${data.vueltaDistanceKm!.toStringAsFixed(1)} km'
-                        : null,
-                    fontSize: fontSizeVal,
-                  ),
+                  if (data.hasIda)
+                    _buildLegendRow(
+                      swatch: _buildLineSwatch(color: idaColor, isDashed: false),
+                      label: 'Recorrido IDA (Traza Continua)',
+                      distText: data.idaDistanceKm != null && data.idaDistanceKm! > 0
+                          ? '${data.idaDistanceKm!.toStringAsFixed(1)} km'
+                          : null,
+                      fontSize: fontSizeVal,
+                    ),
+                  if (data.hasVuelta)
+                    _buildLegendRow(
+                      swatch: _buildLineSwatch(color: vueltaColor, isDashed: true),
+                      label: 'Recorrido VUELTA (Traza Discontinua)',
+                      distText: data.vueltaDistanceKm != null && data.vueltaDistanceKm! > 0
+                          ? '${data.vueltaDistanceKm!.toStringAsFixed(1)} km'
+                          : null,
+                      fontSize: fontSizeVal,
+                    ),
                   _buildLegendRow(
                     swatch: _buildArrowSwatch(color: idaColor),
                     label: 'Sentido de Flujo (Flechas de Guía)',
@@ -1671,11 +1830,18 @@ class CartographicPdfService {
                     label: 'Cabecera Final / Destino',
                     fontSize: fontSizeVal,
                   ),
-                  _buildLegendRow(
-                    swatch: _buildStopSwatch(color: idaColor),
-                    label: 'Paradas Oficiales (${data.stopPoints.length})',
-                    fontSize: fontSizeVal,
-                  ),
+                  if (includeStops)
+                    _buildLegendRow(
+                      swatch: _buildStopSwatch(color: idaColor),
+                      label: 'Paradas Oficiales (${data.stopPoints.length})',
+                      fontSize: fontSizeVal,
+                    ),
+                  if (includeLanusBoundary)
+                    _buildLegendRow(
+                      swatch: _buildBoundarySwatch(),
+                      label: 'Límite Partido de Lanús',
+                      fontSize: fontSizeVal,
+                    ),
                 ],
               ),
             ),
@@ -1715,7 +1881,7 @@ class CartographicPdfService {
                 padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 color: granateLanus,
                 child: pw.Text(
-                  'HOJA DE RUTA VIAL · ITINERARIO OFICIAL DE ARTERIAS (OPENSTREETMAP)',
+                  'HOJA DE RUTA VIAL · ITINERARIO OFICIAL DE ARTERIAS',
                   style: pw.TextStyle(
                     color: PdfColors.white,
                     fontWeight: pw.FontWeight.bold,
@@ -1887,6 +2053,29 @@ class CartographicPdfService {
     );
   }
 
+  static pw.Widget _buildBoundarySwatch() {
+    return pw.CustomPaint(
+      size: const PdfPoint(26, 9),
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        // Halo blanco
+        canvas.setStrokeColor(PdfColors.white);
+        canvas.setLineWidth(3.6);
+        canvas.moveTo(0, size.y / 2);
+        canvas.lineTo(size.x, size.y / 2);
+        canvas.strokePath();
+
+        // Traza Granate Lanús con patrón dash-dot
+        canvas.setStrokeColor(granateLanus);
+        canvas.setLineWidth(1.8);
+        canvas.setLineDashPattern(const [6, 3, 2, 3], 0);
+        canvas.moveTo(0, size.y / 2);
+        canvas.lineTo(size.x, size.y / 2);
+        canvas.strokePath();
+        canvas.setLineDashPattern();
+      },
+    );
+  }
+
   static int _calculateEstimatedMinutes(double distanceKm) {
     if (distanceKm <= 0) return 30;
     // Velocidad comercial media de colectivos en conurbano: 18.5 km/h
@@ -1939,6 +2128,9 @@ class CartographicPdfService {
     bool isLandscape = true,
     bool includeBasemap = true,
     MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
   }) async {
     final bytes = await generateSheetBytes(
       data: data,
@@ -1946,6 +2138,9 @@ class CartographicPdfService {
       isLandscape: isLandscape,
       includeBasemap: includeBasemap,
       mapboxStyle: mapboxStyle,
+      includeStops: includeStops,
+      includeOperationalMetrics: includeOperationalMetrics,
+      includeLanusBoundary: includeLanusBoundary,
     );
 
     final tempDir = await getTemporaryDirectory();
@@ -1972,6 +2167,9 @@ class CartographicPdfService {
     bool includeBasemap = true,
     MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
     MultiBranchExportMode mode = MultiBranchExportMode.multiPageBooklet,
+    bool includeStops = true,
+    bool includeOperationalMetrics = true,
+    bool includeLanusBoundary = true,
     void Function(int current, int total, String status)? onProgress,
   }) async {
     final bytes = await generateMultiBranchBytes(
@@ -1981,6 +2179,9 @@ class CartographicPdfService {
       includeBasemap: includeBasemap,
       mapboxStyle: mapboxStyle,
       mode: mode,
+      includeStops: includeStops,
+      includeOperationalMetrics: includeOperationalMetrics,
+      includeLanusBoundary: includeLanusBoundary,
       onProgress: onProgress,
     );
 

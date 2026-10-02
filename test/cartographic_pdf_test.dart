@@ -306,5 +306,47 @@ void main() {
       expect(bytes.isNotEmpty, isTrue);
       expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
     });
+
+    test('loads official Lanus boundary points from json', () async {
+      final boundaryPoints = await CartographicPdfService.loadLanusBoundaryPoints();
+      expect(boundaryPoints, isNotEmpty);
+      expect(boundaryPoints.length, greaterThan(100));
+      // First point should be around Lanús boundary (-34.68 to -34.74 lat, -58.33 to -58.45 lon)
+      expect(boundaryPoints.first.latitude, inInclusiveRange(-34.76, -34.64));
+      expect(boundaryPoints.first.longitude, inInclusiveRange(-58.48, -58.32));
+    });
+
+    test('generates valid PDF with Lanus municipal boundary enabled and disabled', () async {
+      final bytesWithBoundary = await CartographicPdfService.generateSheetBytes(
+        data: sampleRouteData,
+        format: CartographicSheetFormat.a3,
+        includeBasemap: false,
+        includeLanusBoundary: true,
+      );
+      expect(bytesWithBoundary, isA<Uint8List>());
+      expect(bytesWithBoundary.isNotEmpty, isTrue);
+
+      final bytesWithoutBoundary = await CartographicPdfService.generateSheetBytes(
+        data: sampleRouteData,
+        format: CartographicSheetFormat.a3,
+        includeBasemap: false,
+        includeLanusBoundary: false,
+      );
+      expect(bytesWithoutBoundary, isA<Uint8List>());
+      expect(bytesWithoutBoundary.isNotEmpty, isTrue);
+    });
+
+    test('generates valid PDF with custom layer options (metrics off, stops off)', () async {
+      final bytes = await CartographicPdfService.generateSheetBytes(
+        data: sampleRouteData,
+        format: CartographicSheetFormat.a4,
+        includeBasemap: false,
+        includeStops: false,
+        includeOperationalMetrics: false,
+        includeLanusBoundary: true,
+      );
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+    });
   });
 }

@@ -119,6 +119,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
   MapboxStyle _selectedMapboxStyle = MapboxStyle.streetsColor;
   bool _isLandscape = true;
   bool _includeBasemap = true;
+  bool _includeLanusBoundary = true;
+  bool _includeOperationalMetrics = true;
+  bool _includeStops = true;
   bool _isExporting = false;
   String? _exportProgressMessage;
 
@@ -179,7 +182,7 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                     child: Image.asset(
                       'assets/images/lanus_logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, _) => const Icon(Icons.architecture, color: celeste, size: 24),
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.architecture, color: celeste, size: 24),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -482,12 +485,49 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
-              // Toggle fondo callejero Mapbox
+              // 6. Capas y Elementos del Plano (Toggles interactivos)
+              const Text(
+                'CAPAS Y ELEMENTOS DEL PLANO',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 4),
+
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Renderizar fondo cartográfico Mapbox', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                dense: true,
+                title: const Text('Límite del Partido de Lanús', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Demarcación perimetral oficial del municipio en plano', style: TextStyle(fontSize: 11)),
+                value: _includeLanusBoundary,
+                activeThumbColor: granate,
+                onChanged: (val) => setState(() => _includeLanusBoundary = val),
+              ),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Frecuencias y tiempos de viaje', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Muestra cómputo de ciclo y frecuencias en carátula técnica', style: TextStyle(fontSize: 11)),
+                value: _includeOperationalMetrics,
+                activeThumbColor: azulArq,
+                onChanged: (val) => setState(() => _includeOperationalMetrics = val),
+              ),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Paradas registradas', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Muestra puntos de parada en mapa y cómputo técnico', style: TextStyle(fontSize: 11)),
+                value: _includeStops,
+                activeThumbColor: azulArq,
+                onChanged: (val) => setState(() => _includeStops = val),
+              ),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Fondo cartográfico Mapbox HD', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
                 subtitle: const Text('Descarga teselas HD para contexto de calles y arquitectura urbana', style: TextStyle(fontSize: 11)),
                 value: _includeBasemap,
                 activeThumbColor: azulArq,
@@ -508,7 +548,7 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
 
               const SizedBox(height: 16),
 
-              // 6. Botones de Acción
+              // 7. Botones de Acción
               Row(
                 children: [
                   // Compartir archivo PDF
@@ -566,6 +606,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
           isLandscape: _isLandscape,
           includeBasemap: _includeBasemap,
           mapboxStyle: _selectedMapboxStyle,
+          includeStops: _includeStops,
+          includeOperationalMetrics: _includeOperationalMetrics,
+          includeLanusBoundary: _includeLanusBoundary,
         );
       } else {
         await CartographicPdfService.exportAndShareMultiBranch(
@@ -575,6 +618,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
           includeBasemap: _includeBasemap,
           mapboxStyle: _selectedMapboxStyle,
           mode: _exportMode,
+          includeStops: _includeStops,
+          includeOperationalMetrics: _includeOperationalMetrics,
+          includeLanusBoundary: _includeLanusBoundary,
           onProgress: (current, total, status) {
             if (mounted) {
               setState(() => _exportProgressMessage = '$status ($current/$total)');
@@ -613,6 +659,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
             isLandscape: _isLandscape,
             includeBasemap: _includeBasemap,
             mapboxStyle: _selectedMapboxStyle,
+            includeStops: _includeStops,
+            includeOperationalMetrics: _includeOperationalMetrics,
+            includeLanusBoundary: _includeLanusBoundary,
           );
         } else {
           return CartographicPdfService.generateMultiBranchBytes(
@@ -622,6 +671,9 @@ class _CartographicExportDialogState extends State<CartographicExportDialog> {
             includeBasemap: _includeBasemap,
             mapboxStyle: _selectedMapboxStyle,
             mode: _exportMode,
+            includeStops: _includeStops,
+            includeOperationalMetrics: _includeOperationalMetrics,
+            includeLanusBoundary: _includeLanusBoundary,
           );
         }
       },
