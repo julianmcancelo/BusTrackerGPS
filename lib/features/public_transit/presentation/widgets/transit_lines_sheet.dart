@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/transit_models.dart';
 import '../../../../core/utils/transport_utils.dart';
+import '../../../cartography/presentation/cartographic_export_dialog.dart';
 
 /// Modal interactivo para explorar, buscar y gestionar la visibilidad de todas las líneas de transporte.
 class TransitLinesSheet extends StatefulWidget {
@@ -414,7 +415,16 @@ class _TransitLinesSheetState extends State<TransitLinesSheet> {
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.print_outlined, size: 20, color: Color(0xFF0F172A)),
+                                      tooltip: 'Imprimir Plano / Cuadernillo',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        CartographicExportDialog.showLine(context, line: line);
+                                      },
+                                    ),
 
                                     // Switch de visibilidad en mapa
                                     Switch.adaptive(

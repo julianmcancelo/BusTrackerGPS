@@ -131,6 +131,11 @@ class CartographicRouteData {
   bool get hasVuelta => effectiveVueltaPoints.isNotEmpty;
 }
 
+enum MultiBranchExportMode {
+  multiPageBooklet,       // 1 lámina individual por cada ramal en un único PDF
+  singleConsolidatedSheet // Todos los ramales consolidados en una sola lámina de red
+}
+
 class CartographicPdfService {
   // Paleta oficial de Lanús y Arquitectura Técnica
   static const PdfColor granateLanus = PdfColor.fromInt(0xFF7B1828);
@@ -139,6 +144,18 @@ class CartographicPdfService {
   static const PdfColor grisPlano = PdfColor.fromInt(0xFFF8FAFC);
   static const PdfColor grisLineaTecnica = PdfColor.fromInt(0xFF334155);
   static const PdfColor grisBordeSuave = PdfColor.fromInt(0xFFCBD5E1);
+
+  // Paleta de contraste para diferenciar múltiples ramales en plano consolidado
+  static const List<PdfColor> multiBranchPalette = [
+    PdfColor.fromInt(0xFF0284C7), // Azul cielo / Ocean
+    PdfColor.fromInt(0xFF16A34A), // Verde esmeralda
+    PdfColor.fromInt(0xFFDC2626), // Rojo carmín
+    PdfColor.fromInt(0xFFD97706), // Ámbar / Naranja
+    PdfColor.fromInt(0xFF9333EA), // Violeta
+    PdfColor.fromInt(0xFF0D9488), // Teal petróleo
+    PdfColor.fromInt(0xFFE11D48), // Rosa intenso
+    PdfColor.fromInt(0xFF4F46E5), // Índigo
+  ];
 
   static Future<Uint8List?> _loadOfficialLogoBytes() async {
     try {
@@ -163,13 +180,109 @@ class CartographicPdfService {
   }) async {
     final pdf = pw.Document();
     final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
+    final margin = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1 ? 36.0 : 20.0;
+    final logoBytes = await _loadOfficialLogoBytes();
 
+    final page = await _buildBranchPage(
+      data: data,
+      format: format,
+      pageFormat: pageFormat,
+      margin: margin,
+      includeBasemap: includeBasemap,
+      mapboxStyle: mapboxStyle,
+      logoBytes: logoBytes,
+    );
+
+    pdf.addPage(page);
+    return pdf.save();
+  }
+
+  /// Genera un documento PDF para uno, varios o todos los ramales de una línea.
+  /// En modo `multiPageBooklet` genera 1 lámina independiente por cada ramal.
+  /// En modo `singleConsolidatedSheet` genera una única lámina con todos los ramales integrados.
+  static Future<Uint8List> generateMultiBranchBytes({
+    required List<CartographicRouteData> branchesData,
+    CartographicSheetFormat format = CartographicSheetFormat.a3,
+    bool isLandscape = true,
+    bool includeBasemap = true,
+    MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
+    MultiBranchExportMode mode = MultiBranchExportMode.multiPageBooklet,
+    void Function(int current, int total, String status)? onProgress,
+  }) async {
+    if (branchesData.isEmpty) {
+      throw ArgumentError('branchesData no puede estar vacío');
+    }
+    if (branchesData.length == 1) {
+      return generateSheetBytes(
+        data: branchesData.first,
+        format: format,
+        isLandscape: isLandscape,
+        includeBasemap: includeBasemap,
+        mapboxStyle: mapboxStyle,
+      );
+    }
+
+    final pdf = pw.Document();
+    final pageFormat = format.toPdfPageFormat(isLandscape: isLandscape);
+    final margin = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1 ? 36.0 : 20.0;
+    final logoBytes = await _loadOfficialLogoBytes();
+
+    if (mode == MultiBranchExportMode.singleConsolidatedSheet) {
+      onProgress?.call(1, 1, 'Generando plano consolidado de conjunto...');
+      final page = await _buildConsolidatedSheetPage(
+        branchesData: branchesData,
+        format: format,
+        pageFormat: pageFormat,
+        margin: margin,
+        includeBasemap: includeBasemap,
+        mapboxStyle: mapboxStyle,
+        logoBytes: logoBytes,
+      );
+      pdf.addPage(page);
+    } else {
+      // Cuadernillo Multi-página (1 página por ramal)
+      for (var i = 0; i < branchesData.length; i++) {
+        final b = branchesData[i];
+        onProgress?.call(
+          i + 1,
+          branchesData.length,
+          'Generando lámina del ${b.branchName} (${i + 1}/${branchesData.length})...',
+        );
+        final page = await _buildBranchPage(
+          data: b,
+          format: format,
+          pageFormat: pageFormat,
+          margin: margin,
+          includeBasemap: includeBasemap,
+          mapboxStyle: mapboxStyle,
+          logoBytes: logoBytes,
+          pageNumber: i + 1,
+          totalPages: branchesData.length,
+        );
+        pdf.addPage(page);
+      }
+    }
+
+    return pdf.save();
+  }
+
+  /// Construye una página completa de lámina oficial para un ramal individual.
+  static Future<pw.Page> _buildBranchPage({
+    required CartographicRouteData data,
+    required CartographicSheetFormat format,
+    required PdfPageFormat pageFormat,
+    required double margin,
+    required bool includeBasemap,
+    required MapboxStyle mapboxStyle,
+    required Uint8List? logoBytes,
+    int? pageNumber,
+    int? totalPages,
+  }) async {
     final allRoutePoints = data.allPoints;
     final bounds = _calculateSafeBounds(allRoutePoints);
 
     final pageWidth = pageFormat.width;
     final pageHeight = pageFormat.height;
-    final margin = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1 ? 36.0 : 20.0;
 
     final contentWidth = pageWidth - (margin * 2);
     final contentHeight = pageHeight - (margin * 2);
@@ -196,18 +309,15 @@ class CartographicPdfService {
     final hasStreets = idaStreets.isNotEmpty || vueltaStreets.isNotEmpty;
     final hojaRutaHeight = hasStreets ? (isPlotterLarge ? 48.0 : 34.0) : 0.0;
 
-    // Dimensiones exactas del contenedor del mapa
     final mapWidth = contentWidth - 10.0;
     final mapHeight = contentHeight - headerHeight - caratureHeight - hojaRutaHeight - 16.0;
 
-    // Proyector Web Mercator unificado (garantiza coincidencia exacta imagen / traza)
     final projection = MercatorViewportProjection(
       bounds: bounds,
       width: mapWidth,
       height: mapHeight,
     );
 
-    // Descarga de mosaico Mapbox (@2x Retina)
     Uint8List? basemapBytes;
     if (includeBasemap && allRoutePoints.isNotEmpty) {
       basemapBytes = await MapTileComposer.composeBasemap(
@@ -218,113 +328,233 @@ class CartographicPdfService {
       );
     }
 
-    final logoBytes = await _loadOfficialLogoBytes();
-
     final lineColorHex = TransportUtils.getLineColor(data.lineNumber).toARGB32();
     final linePdfColor = PdfColor.fromInt(lineColorHex);
-    // VUELTA contrasta en color y en trama discontinua con espacios
     final isReddish = (linePdfColor.red > 0.65 && linePdfColor.green < 0.45);
     final vueltaPdfColor = isReddish
         ? const PdfColor(0.12, 0.45, 0.88)
         : const PdfColor(0.92, 0.40, 0.08);
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: pageFormat,
-        margin: pw.EdgeInsets.all(margin),
-        build: (pw.Context context) {
-          return pw.Container(
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: azulArquitectura, width: 2.0),
-              color: PdfColors.white,
-            ),
-            child: pw.Padding(
-              padding: const pw.EdgeInsets.all(5),
-              child: pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
-                ),
-                child: pw.Column(
-                  children: [
-                    // 1. Encabezado Oficial Institucional con Logo
-                    _buildInstitutionalHeader(data, format, headerHeight, logoBytes),
-
-                    // 2. Viewport del Plano Cartográfico Isométrico
-                    pw.Expanded(
-                      child: pw.Container(
-                        width: double.infinity,
-                        margin: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                        decoration: pw.BoxDecoration(
-                          border: pw.Border.all(color: grisBordeSuave, width: 1.0),
-                          color: grisPlano,
-                        ),
-                        child: pw.Stack(
-                          children: [
-                            // Fondo raster Mapbox (Light / Streets)
-                            if (basemapBytes != null)
-                              pw.Positioned.fill(
-                                child: pw.Image(
-                                  pw.MemoryImage(basemapBytes),
-                                  fit: pw.BoxFit.fill,
-                                ),
-                              ),
-
-                            // Marcas de registro y cruces técnicas de arquitectura
+    return pw.Page(
+      pageFormat: pageFormat,
+      margin: pw.EdgeInsets.all(margin),
+      build: (pw.Context context) {
+        return pw.Container(
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: azulArquitectura, width: 2.0),
+            color: PdfColors.white,
+          ),
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.all(5),
+            child: pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+              ),
+              child: pw.Column(
+                children: [
+                  _buildInstitutionalHeader(
+                    data,
+                    format,
+                    headerHeight,
+                    logoBytes,
+                    pageNumber: pageNumber,
+                    totalPages: totalPages,
+                  ),
+                  pw.Expanded(
+                    child: pw.Container(
+                      width: double.infinity,
+                      margin: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: grisBordeSuave, width: 1.0),
+                        color: grisPlano,
+                      ),
+                      child: pw.Stack(
+                        children: [
+                          if (basemapBytes != null)
                             pw.Positioned.fill(
-                              child: _buildArchitecturalCrosshairs(),
-                            ),
-
-                            // Trazado Vectorial Oficial: IDA (continua) y VUELTA (con espacios) + Flechas
-                            pw.Positioned.fill(
-                              child: _buildVectorPolyline(
-                                data: data,
-                                projection: projection,
-                                idaColor: linePdfColor,
-                                vueltaColor: vueltaPdfColor,
+                              child: pw.Image(
+                                pw.MemoryImage(basemapBytes),
+                                fit: pw.BoxFit.fill,
                               ),
                             ),
-
-                            // Rosa de los Vientos Arquitectónica
-                            pw.Positioned(
-                              top: 14,
-                              right: 14,
-                              child: _buildArchitecturalNorthArrow(isPlotterLarge),
+                          pw.Positioned.fill(
+                            child: _buildArchitecturalCrosshairs(),
+                          ),
+                          pw.Positioned.fill(
+                            child: _buildVectorPolyline(
+                              data: data,
+                              projection: projection,
+                              idaColor: linePdfColor,
+                              vueltaColor: vueltaPdfColor,
                             ),
-
-                            // Escala Gráfica Métrica de Arquitectura
-                            pw.Positioned(
-                              bottom: 12,
-                              left: 14,
-                              child: _buildGraphicScale(bounds, projection),
-                            ),
-                          ],
-                        ),
+                          ),
+                          pw.Positioned(
+                            top: 14,
+                            right: 14,
+                            child: _buildArchitecturalNorthArrow(isPlotterLarge),
+                          ),
+                          pw.Positioned(
+                            bottom: 12,
+                            left: 14,
+                            child: _buildGraphicScale(bounds, projection),
+                          ),
+                        ],
                       ),
                     ),
-
-                    // 3. Banda de Hoja de Ruta Vial Oficial (Secuencia de Arterias de OpenStreetMap)
-                    if (hasStreets)
-                      _buildStreetItineraryBanner(
-                        idaStreets: idaStreets,
-                        vueltaStreets: vueltaStreets,
-                        idaColor: linePdfColor,
-                        vueltaColor: vueltaPdfColor,
-                        height: hojaRutaHeight,
-                        isLarge: isPlotterLarge,
-                      ),
-
-                    // 4. Carátula de Plano con Cuadro de Referencias Cartográficas Oficiales
-                    _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor, vueltaPdfColor),
-                  ],
-                ),
+                  ),
+                  if (hasStreets)
+                    _buildStreetItineraryBanner(
+                      idaStreets: idaStreets,
+                      vueltaStreets: vueltaStreets,
+                      idaColor: linePdfColor,
+                      vueltaColor: vueltaPdfColor,
+                      height: hojaRutaHeight,
+                      isLarge: isPlotterLarge,
+                    ),
+                  _buildArchitecturalCarature(data, format, caratureHeight, linePdfColor, vueltaPdfColor),
+                ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Construye una lámina única consolidada con todos los ramales superpuestos.
+  static Future<pw.Page> _buildConsolidatedSheetPage({
+    required List<CartographicRouteData> branchesData,
+    required CartographicSheetFormat format,
+    required PdfPageFormat pageFormat,
+    required double margin,
+    required bool includeBasemap,
+    required MapboxStyle mapboxStyle,
+    required Uint8List? logoBytes,
+  }) async {
+    final allRoutePoints = [for (final b in branchesData) ...b.allPoints];
+    final bounds = _calculateSafeBounds(allRoutePoints);
+
+    final pageWidth = pageFormat.width;
+    final pageHeight = pageFormat.height;
+
+    final contentWidth = pageWidth - (margin * 2);
+    final contentHeight = pageHeight - (margin * 2);
+
+    final isPlotterLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
+    final headerHeight = isPlotterLarge ? 90.0 : 66.0;
+    final caratureHeight = isPlotterLarge ? 180.0 : 124.0;
+    final summaryBannerHeight = isPlotterLarge ? 38.0 : 26.0;
+
+    final mapWidth = contentWidth - 10.0;
+    final mapHeight = contentHeight - headerHeight - caratureHeight - summaryBannerHeight - 16.0;
+
+    final projection = MercatorViewportProjection(
+      bounds: bounds,
+      width: mapWidth,
+      height: mapHeight,
     );
 
-    return pdf.save();
+    Uint8List? basemapBytes;
+    if (includeBasemap && allRoutePoints.isNotEmpty) {
+      basemapBytes = await MapTileComposer.composeBasemap(
+        bounds: bounds,
+        targetWidthPx: (mapWidth * 2.0).toInt(),
+        targetHeightPx: (mapHeight * 2.0).toInt(),
+        style: mapboxStyle,
+      );
+    }
+
+    final branchColors = <PdfColor>[];
+    for (var i = 0; i < branchesData.length; i++) {
+      branchColors.add(multiBranchPalette[i % multiBranchPalette.length]);
+    }
+
+    final firstBranch = branchesData.first;
+
+    return pw.Page(
+      pageFormat: pageFormat,
+      margin: pw.EdgeInsets.all(margin),
+      build: (pw.Context context) {
+        return pw.Container(
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: azulArquitectura, width: 2.0),
+            color: PdfColors.white,
+          ),
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.all(5),
+            child: pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+              ),
+              child: pw.Column(
+                children: [
+                  _buildInstitutionalHeader(
+                    firstBranch,
+                    format,
+                    headerHeight,
+                    logoBytes,
+                    customSubtitle: 'PLANO DE CONJUNTO · RED CONSOLIDADA (${branchesData.length} RAMALES)',
+                  ),
+                  pw.Expanded(
+                    child: pw.Container(
+                      width: double.infinity,
+                      margin: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: grisBordeSuave, width: 1.0),
+                        color: grisPlano,
+                      ),
+                      child: pw.Stack(
+                        children: [
+                          if (basemapBytes != null)
+                            pw.Positioned.fill(
+                              child: pw.Image(
+                                pw.MemoryImage(basemapBytes),
+                                fit: pw.BoxFit.fill,
+                              ),
+                            ),
+                          pw.Positioned.fill(
+                            child: _buildArchitecturalCrosshairs(),
+                          ),
+                          pw.Positioned.fill(
+                            child: _buildMultiBranchVectorPolyline(
+                              branchesData: branchesData,
+                              branchColors: branchColors,
+                              projection: projection,
+                            ),
+                          ),
+                          pw.Positioned(
+                            top: 14,
+                            right: 14,
+                            child: _buildArchitecturalNorthArrow(isPlotterLarge),
+                          ),
+                          pw.Positioned(
+                            bottom: 12,
+                            left: 14,
+                            child: _buildGraphicScale(bounds, projection),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildConsolidatedSummaryBanner(
+                    branchesData: branchesData,
+                    branchColors: branchColors,
+                    height: summaryBannerHeight,
+                    isLarge: isPlotterLarge,
+                  ),
+                  _buildConsolidatedCarature(
+                    branchesData: branchesData,
+                    branchColors: branchColors,
+                    format: format,
+                    height: caratureHeight,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Encabezado Institucional Oficial con logotipo y dependencias del Municipio de Lanús
@@ -332,8 +562,11 @@ class CartographicPdfService {
     CartographicRouteData data,
     CartographicSheetFormat format,
     double height,
-    Uint8List? logoBytes,
-  ) {
+    Uint8List? logoBytes, {
+    int? pageNumber,
+    int? totalPages,
+    String? customSubtitle,
+  }) {
     final isLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
     final titleSize = isLarge ? 17.0 : 12.0;
     final subSize = isLarge ? 10.0 : 8.0;
@@ -412,7 +645,7 @@ class CartographicPdfService {
                   ),
                 ),
                 pw.Text(
-                  'DIRECCIÓN GENERAL DE MOVILIDAD Y TRANSPORTE · LANÚS DIGITAL',
+                  customSubtitle ?? 'DIRECCIÓN GENERAL DE MOVILIDAD Y TRANSPORTE · LANÚS DIGITAL',
                   style: pw.TextStyle(
                     color: PdfColors.grey300,
                     fontSize: subSize * 0.88,
@@ -451,6 +684,23 @@ class CartographicPdfService {
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
+                if (pageNumber != null && totalPages != null)
+                  pw.Container(
+                    margin: const pw.EdgeInsets.only(top: 2),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: const pw.BoxDecoration(
+                      color: granateLanus,
+                      borderRadius: pw.BorderRadius.all(pw.Radius.circular(2)),
+                    ),
+                    child: pw.Text(
+                      'LÁMINA $pageNumber DE $totalPages',
+                      style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: subSize * 0.72,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -642,7 +892,394 @@ class CartographicPdfService {
     );
   }
 
-  /// Dibuja flechas triangulares chevrons a lo largo de la traza para marcar el sentido de circulación
+  /// Traza vectorial simultánea para múltiples ramales en una lámina consolidada
+  static pw.Widget _buildMultiBranchVectorPolyline({
+    required List<CartographicRouteData> branchesData,
+    required List<PdfColor> branchColors,
+    required MercatorViewportProjection projection,
+  }) {
+    return pw.CustomPaint(
+      painter: (PdfGraphics canvas, PdfPoint size) {
+        for (int b = 0; b < branchesData.length; b++) {
+          final data = branchesData[b];
+          final color = branchColors[b % branchColors.length];
+          final idaPoints = data.effectiveIdaPoints;
+          final vueltaPoints = data.effectiveVueltaPoints;
+
+          // 1. RECORRIDO VUELTA (Línea con espacios / discontinua)
+          if (vueltaPoints.isNotEmpty) {
+            canvas.setStrokeColor(PdfColors.white);
+            canvas.setLineWidth(4.8);
+            canvas.setLineDashPattern(const [6, 4], 0);
+            final firstV = projection.projectToPdf(vueltaPoints.first);
+            canvas.moveTo(firstV.x, firstV.y);
+            for (int i = 1; i < vueltaPoints.length; i++) {
+              final pt = projection.projectToPdf(vueltaPoints[i]);
+              canvas.lineTo(pt.x, pt.y);
+            }
+            canvas.strokePath();
+
+            canvas.setStrokeColor(color);
+            canvas.setLineWidth(2.8);
+            canvas.setLineDashPattern(const [6, 4], 0);
+            canvas.moveTo(firstV.x, firstV.y);
+            for (int i = 1; i < vueltaPoints.length; i++) {
+              final pt = projection.projectToPdf(vueltaPoints[i]);
+              canvas.lineTo(pt.x, pt.y);
+            }
+            canvas.strokePath();
+            canvas.setLineDashPattern();
+
+            _drawDirectionalChevrons(
+              canvas: canvas,
+              points: vueltaPoints,
+              projection: projection,
+              color: color,
+              spacingMeters: 2200.0,
+            );
+          }
+
+          // 2. RECORRIDO IDA (Línea continua)
+          if (idaPoints.isNotEmpty) {
+            canvas.setStrokeColor(PdfColors.white);
+            canvas.setLineWidth(4.8);
+            canvas.setLineDashPattern();
+            final firstI = projection.projectToPdf(idaPoints.first);
+            canvas.moveTo(firstI.x, firstI.y);
+            for (int i = 1; i < idaPoints.length; i++) {
+              final pt = projection.projectToPdf(idaPoints[i]);
+              canvas.lineTo(pt.x, pt.y);
+            }
+            canvas.strokePath();
+
+            canvas.setStrokeColor(color);
+            canvas.setLineWidth(2.8);
+            canvas.moveTo(firstI.x, firstI.y);
+            for (int i = 1; i < idaPoints.length; i++) {
+              final pt = projection.projectToPdf(idaPoints[i]);
+              canvas.lineTo(pt.x, pt.y);
+            }
+            canvas.strokePath();
+
+            _drawDirectionalChevrons(
+              canvas: canvas,
+              points: idaPoints,
+              projection: projection,
+              color: color,
+              spacingMeters: 2200.0,
+            );
+          }
+
+          // 3. Cabecera Inicial del Ramal
+          if (idaPoints.isNotEmpty) {
+            final orig = projection.projectToPdf(idaPoints.first);
+            canvas.setFillColor(PdfColors.white);
+            canvas.drawEllipse(orig.x, orig.y, 4.5, 4.5);
+            canvas.fillPath();
+            canvas.setFillColor(color);
+            canvas.drawEllipse(orig.x, orig.y, 3.2, 3.2);
+            canvas.fillPath();
+          }
+        }
+      },
+    );
+  }
+
+  /// Banda resumen de ramales en plano consolidado
+  static pw.Widget _buildConsolidatedSummaryBanner({
+    required List<CartographicRouteData> branchesData,
+    required List<PdfColor> branchColors,
+    required double height,
+    required bool isLarge,
+  }) {
+    final fontSize = isLarge ? 8.0 : 6.4;
+    return pw.Container(
+      height: height,
+      margin: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+      ),
+      child: pw.Row(
+        children: [
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+            color: granateLanus,
+            child: pw.Text(
+              'RAMALES EN PLANO:',
+              style: pw.TextStyle(
+                color: PdfColors.white,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: fontSize,
+              ),
+            ),
+          ),
+          pw.SizedBox(width: 8),
+          pw.Expanded(
+            child: pw.Wrap(
+              spacing: 10,
+              runSpacing: 2,
+              children: [
+                for (var i = 0; i < branchesData.length; i++) ...[
+                  pw.Row(
+                    mainAxisSize: pw.MainAxisSize.min,
+                    children: [
+                      pw.Container(
+                        width: 7,
+                        height: 7,
+                        decoration: pw.BoxDecoration(
+                          color: branchColors[i % branchColors.length],
+                          shape: pw.BoxShape.circle,
+                        ),
+                      ),
+                      pw.SizedBox(width: 4),
+                      pw.Text(
+                        '${branchesData[i].branchName} (${branchesData[i].distanceKm.toStringAsFixed(1)} km)',
+                        style: pw.TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: pw.FontWeight.bold,
+                          color: azulArquitectura,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Carátula oficial para plano consolidado con múltiples ramales
+  static pw.Widget _buildConsolidatedCarature({
+    required List<CartographicRouteData> branchesData,
+    required List<PdfColor> branchColors,
+    required CartographicSheetFormat format,
+    required double height,
+  }) {
+    final isLarge = format == CartographicSheetFormat.a0 || format == CartographicSheetFormat.a1;
+    final fontSizeTitle = isLarge ? 15.0 : 10.0;
+    final fontSizeVal = isLarge ? 10.0 : 7.4;
+    final first = branchesData.first;
+    final totalKm = branchesData.fold(0.0, (acc, b) => acc + b.distanceKm);
+    final totalPoints = branchesData.fold(0, (acc, b) => acc + b.allPoints.length);
+    final totalStops = branchesData.fold(0, (acc, b) => acc + b.stopPoints.length);
+
+    final leftIndices = <int>[];
+    final rightIndices = <int>[];
+    for (int i = 0; i < branchesData.length; i++) {
+      if (i.isEven) {
+        leftIndices.add(i);
+      } else {
+        rightIndices.add(i);
+      }
+    }
+
+    return pw.Container(
+      height: height,
+      padding: const pw.EdgeInsets.all(6),
+      decoration: const pw.BoxDecoration(color: PdfColors.white),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          // 1. Bloque de Proyecto y Ubicación
+          pw.Expanded(
+            flex: 4,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(6),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'PROYECTO: RED DE TRANSPORTE PÚBLICO COLECTIVO',
+                    style: pw.TextStyle(fontSize: fontSizeVal * 0.9, fontWeight: pw.FontWeight.bold, color: granateLanus),
+                  ),
+                  pw.Text(
+                    'UBICACIÓN: PARTIDO DE LANÚS · PCIA. DE BUENOS AIRES',
+                    style: pw.TextStyle(fontSize: fontSizeVal * 0.8, color: PdfColors.grey700),
+                  ),
+                  pw.Divider(color: grisBordeSuave, thickness: 0.5),
+                  pw.Row(
+                    children: [
+                      pw.Container(
+                        width: isLarge ? 48 : 34,
+                        height: isLarge ? 48 : 34,
+                        decoration: const pw.BoxDecoration(
+                          color: azulArquitectura,
+                          shape: pw.BoxShape.circle,
+                        ),
+                        child: pw.Center(
+                          child: pw.Text(
+                            first.lineNumber,
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: isLarge ? 18 : 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'LÍNEA ${first.lineNumber} · RED CONSOLIDADA',
+                              style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: fontSizeTitle,
+                                color: azulArquitectura,
+                              ),
+                            ),
+                            pw.Text(
+                              '${branchesData.length} RAMALES INTEGRADOS · ${first.lineName}',
+                              style: pw.TextStyle(fontSize: fontSizeVal * 0.9, color: PdfColors.grey700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          pw.SizedBox(width: 6),
+
+          // 2. Ficha Técnica Consolidada
+          pw.Expanded(
+            flex: 3,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(6),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMetricRow('Red Total Consolidada:', '${totalKm.toStringAsFixed(1)} km', fontSizeVal),
+                  _buildMetricRow('Ramales en Lámina:', '${branchesData.length} ramales', fontSizeVal),
+                  _buildMetricRow('Puntos GPS Digitalizados:', '$totalPoints pts', fontSizeVal),
+                  _buildMetricRow('Paradas Registradas:', '$totalStops paradas', fontSizeVal),
+                  _buildMetricRow('Fecha de Emisión:', DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()), fontSizeVal),
+                ],
+              ),
+            ),
+          ),
+          pw.SizedBox(width: 6),
+
+          // 3. Leyenda y Referencias de Ramales
+          pw.Expanded(
+            flex: 4,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(5),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: grisLineaTecnica, width: 0.8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                    decoration: const pw.BoxDecoration(color: azulArquitectura),
+                    child: pw.Text(
+                      'LEYENDA DE RAMALES',
+                      style: pw.TextStyle(
+                        fontSize: fontSizeVal * 0.85,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                        letterSpacing: 0.6,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                  ),
+                  pw.Expanded(
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 2),
+                      child: pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Expanded(
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                              children: [
+                                for (final idx in leftIndices)
+                                  _buildBranchLegendItem(
+                                    name: branchesData[idx].branchName,
+                                    distKm: branchesData[idx].distanceKm,
+                                    color: branchColors[idx % branchColors.length],
+                                    fontSize: fontSizeVal,
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (rightIndices.isNotEmpty) ...[
+                            pw.SizedBox(width: 6),
+                            pw.Expanded(
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  for (final idx in rightIndices)
+                                    _buildBranchLegendItem(
+                                      name: branchesData[idx].branchName,
+                                      distKm: branchesData[idx].distanceKm,
+                                      color: branchColors[idx % branchColors.length],
+                                      fontSize: fontSizeVal,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildBranchLegendItem({
+    required String name,
+    required double distKm,
+    required PdfColor color,
+    required double fontSize,
+  }) {
+    return pw.Row(
+      children: [
+        pw.Container(width: 10, height: 3.5, color: color),
+        pw.SizedBox(width: 4),
+        pw.Expanded(
+          child: pw.Text(
+            name,
+            style: pw.TextStyle(fontSize: fontSize * 0.85, fontWeight: pw.FontWeight.bold),
+            maxLines: 1,
+          ),
+        ),
+        pw.Text(
+          '${distKm.toStringAsFixed(1)} km',
+          style: pw.TextStyle(fontSize: fontSize * 0.78, color: PdfColors.grey700),
+        ),
+      ],
+    );
+  }
   static void _drawDirectionalChevrons({
     required PdfGraphics canvas,
     required List<LatLng> points,
@@ -1321,6 +1958,44 @@ class CartographicPdfService {
         files: [XFile(file.path)],
         subject: 'Plano Oficial - Línea ${data.lineNumber} (${data.branchName})',
         text: 'Plano Cartográfico Oficial emitido por Subsecretaría de Planificación Urbana · Dirección General de Movilidad y Transporte - Línea ${data.lineNumber} (${format.name.toUpperCase()})',
+      ),
+    );
+
+    return file;
+  }
+
+  /// Guarda el archivo PDF temporal multi-ramal y lo comparte con SharePlus
+  static Future<File> exportAndShareMultiBranch({
+    required List<CartographicRouteData> branchesData,
+    CartographicSheetFormat format = CartographicSheetFormat.a3,
+    bool isLandscape = true,
+    bool includeBasemap = true,
+    MapboxStyle mapboxStyle = MapboxStyle.streetsColor,
+    MultiBranchExportMode mode = MultiBranchExportMode.multiPageBooklet,
+    void Function(int current, int total, String status)? onProgress,
+  }) async {
+    final bytes = await generateMultiBranchBytes(
+      branchesData: branchesData,
+      format: format,
+      isLandscape: isLandscape,
+      includeBasemap: includeBasemap,
+      mapboxStyle: mapboxStyle,
+      mode: mode,
+      onProgress: onProgress,
+    );
+
+    final tempDir = await getTemporaryDirectory();
+    final lineNum = branchesData.first.lineNumber;
+    final modeSuffix = mode == MultiBranchExportMode.multiPageBooklet ? 'Cuadernillo' : 'RedConsolidada';
+    final fileName = 'Plano_Lanus_${lineNum}_${modeSuffix}_${format.name.toUpperCase()}.pdf';
+    final file = File('${tempDir.path}/$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        subject: 'Plano Oficial - Línea $lineNum ($modeSuffix)',
+        text: 'Plano Cartográfico Oficial emitido por Subsecretaría de Planificación Urbana · Municipio de Lanús - Línea $lineNum ($modeSuffix, ${branchesData.length} ramales, ${format.name.toUpperCase()})',
       ),
     );
 

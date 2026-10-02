@@ -68,25 +68,11 @@ class _LineItineraryScreenState extends ConsumerState<LineItineraryScreen>
             icon: const Icon(Icons.print_outlined),
             tooltip: 'Imprimir Plano Cartográfico Oficial (A0-A4)',
             onPressed: () {
-              final routeData = CartographicRouteData(
-                lineNumber: line.number,
-                lineName: line.name,
-                branchName: branch.branch.name,
-                direction: 'AMBOS SENTIDOS (IDA Y VUELTA)',
-                polylinePoints: [...branch.idaPoints, ...branch.vueltaPoints],
-                idaPoints: branch.idaPoints,
-                vueltaPoints: branch.vueltaPoints,
-                stopPoints: state.stops.map((s) => s.position).toList(),
-                distanceKm: branch.totalDistanceKm > 0
-                    ? branch.totalDistanceKm
-                    : (branch.idaDistanceKm + branch.vueltaDistanceKm),
-                idaDistanceKm: branch.idaDistanceKm,
-                vueltaDistanceKm: branch.vueltaDistanceKm,
-                date: DateTime.now(),
-                routeNotes: 'Itinerario Oficial · Municipio de Lanús',
+              CartographicExportDialog.showLine(
+                context,
+                line: line,
+                initialBranch: branch,
               );
-
-              CartographicExportDialog.show(context, routeData: routeData);
             },
           ),
         ],

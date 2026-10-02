@@ -195,5 +195,116 @@ void main() {
       g.setLineDashPattern(const [6, 3], 0);
       g.setLineDashPattern();
     });
+
+    test('generates multi-page booklet PDF for multiple branches', () async {
+      final branch1 = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal 1 (Estación Lanús - Valentín Alsina)',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [LatLng(-34.700, -58.390), LatLng(-34.705, -58.395)],
+        vueltaPoints: const [LatLng(-34.705, -58.395), LatLng(-34.700, -58.390)],
+        distanceKm: 8.5,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final branch2 = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal 2 (Lanús - Villa Obrera)',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [LatLng(-34.700, -58.390), LatLng(-34.712, -58.380)],
+        vueltaPoints: const [LatLng(-34.712, -58.380), LatLng(-34.700, -58.390)],
+        distanceKm: 11.2,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final branch3 = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal 3 (Lanús - Monte Chingolo)',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [LatLng(-34.700, -58.390), LatLng(-34.725, -58.370)],
+        vueltaPoints: const [LatLng(-34.725, -58.370), LatLng(-34.700, -58.390)],
+        distanceKm: 14.0,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final progressReports = <int>[];
+      final bytes = await CartographicPdfService.generateMultiBranchBytes(
+        branchesData: [branch1, branch2, branch3],
+        format: CartographicSheetFormat.a4,
+        isLandscape: true,
+        includeBasemap: false,
+        mode: MultiBranchExportMode.multiPageBooklet,
+        onProgress: (current, total, status) {
+          progressReports.add(current);
+        },
+      );
+
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+      expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
+      expect(progressReports, equals([1, 2, 3]));
+    });
+
+    test('generates single consolidated sheet PDF with all branches overlay', () async {
+      final branch1 = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal 1',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [LatLng(-34.700, -58.390), LatLng(-34.705, -58.395)],
+        vueltaPoints: const [LatLng(-34.705, -58.395), LatLng(-34.700, -58.390)],
+        distanceKm: 8.5,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final branch2 = CartographicRouteData(
+        lineNumber: '520',
+        lineName: 'Micro Ómnibus Lanús',
+        branchName: 'Ramal 2',
+        direction: 'AMBOS SENTIDOS',
+        idaPoints: const [LatLng(-34.700, -58.390), LatLng(-34.712, -58.380)],
+        vueltaPoints: const [LatLng(-34.712, -58.380), LatLng(-34.700, -58.390)],
+        distanceKm: 11.2,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final bytes = await CartographicPdfService.generateMultiBranchBytes(
+        branchesData: [branch1, branch2],
+        format: CartographicSheetFormat.a3,
+        isLandscape: true,
+        includeBasemap: false,
+        mode: MultiBranchExportMode.singleConsolidatedSheet,
+      );
+
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+      expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
+    });
+
+    test('falls back gracefully to single sheet when 1 branch provided', () async {
+      final single = CartographicRouteData(
+        lineNumber: '283',
+        lineName: 'Compañía Andrade',
+        branchName: 'Ramal Único',
+        direction: 'IDA',
+        polylinePoints: const [LatLng(-34.700, -58.390), LatLng(-34.710, -58.400)],
+        distanceKm: 7.0,
+        date: DateTime(2026, 10, 2),
+      );
+
+      final bytes = await CartographicPdfService.generateMultiBranchBytes(
+        branchesData: [single],
+        format: CartographicSheetFormat.a4,
+        isLandscape: true,
+        includeBasemap: false,
+      );
+
+      expect(bytes, isA<Uint8List>());
+      expect(bytes.isNotEmpty, isTrue);
+      expect(String.fromCharCodes(bytes.sublist(0, 5)), equals('%PDF-'));
+    });
   });
 }

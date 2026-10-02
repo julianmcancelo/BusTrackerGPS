@@ -706,34 +706,12 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
               onAdminLines: () => context.push('/transport'),
               onPrintSheet: () {
                 if (focusedLine == null) return;
-                final branch = focusedBranch ?? focusedLine.primaryBranch;
-                final isIda = state.directionFilter == TransitDirectionFilter.ida;
-                final isVuelta = state.directionFilter == TransitDirectionFilter.vuelta;
-
-                final idaPts = (!isVuelta && branch != null) ? branch.idaPoints : const <LatLng>[];
-                final vueltaPts = (!isIda && branch != null) ? branch.vueltaPoints : const <LatLng>[];
-
-                final distKm = (branch != null && branch.totalDistanceKm > 0)
-                    ? (isIda ? branch.idaDistanceKm : (isVuelta ? branch.vueltaDistanceKm : branch.totalDistanceKm))
-                    : ((idaPts.length + vueltaPts.length) * 0.05);
-
-                final routeData = CartographicRouteData(
-                  lineNumber: focusedLine.number,
-                  lineName: focusedLine.name,
-                  branchName: branch?.branch.name ?? 'Principal',
-                  direction: state.directionFilter.label,
-                  polylinePoints: [...idaPts, ...vueltaPts],
-                  idaPoints: idaPts,
-                  vueltaPoints: vueltaPts,
-                  stopPoints: state.stops.map((s) => s.position).toList(),
-                  distanceKm: distKm,
-                  idaDistanceKm: branch?.idaDistanceKm,
-                  vueltaDistanceKm: branch?.vueltaDistanceKm,
-                  date: DateTime.now(),
-                  routeNotes: 'Red de Transporte Público Oficial · Municipio de Lanús',
+                CartographicExportDialog.showLine(
+                  context,
+                  line: focusedLine,
+                  initialBranch: focusedBranch,
+                  directionFilter: state.directionFilter,
                 );
-
-                CartographicExportDialog.show(context, routeData: routeData);
               },
             ),
           ),
