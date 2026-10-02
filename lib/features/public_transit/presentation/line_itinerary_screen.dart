@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'transit_controller.dart';
 import '../data/models/transit_models.dart';
 import '../../cartography/presentation/cartographic_export_dialog.dart';
-import '../../cartography/services/cartographic_pdf_service.dart';
 
 class LineItineraryScreen extends ConsumerStatefulWidget {
   const LineItineraryScreen({super.key});

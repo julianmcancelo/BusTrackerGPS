@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/transit_models.dart';
+import '../../../../core/utils/transport_utils.dart';
 
 class TransitLineChips extends StatelessWidget {
   final List<TransitLineSummary> lines;
@@ -9,6 +10,7 @@ class TransitLineChips extends StatelessWidget {
   final ValueChanged<int> onLineFocused;
   final VoidCallback onShowAll;
   final VoidCallback? onOpenCatalog;
+  final VoidCallback? onToggleNational;
 
   const TransitLineChips({
     super.key,
@@ -19,6 +21,7 @@ class TransitLineChips extends StatelessWidget {
     required this.onLineFocused,
     required this.onShowAll,
     this.onOpenCatalog,
+    this.onToggleNational,
   });
 
   @override
@@ -26,6 +29,9 @@ class TransitLineChips extends StatelessWidget {
     if (lines.isEmpty) return const SizedBox.shrink();
 
     final allSelected = lines.every((l) => enabledLineIds.contains(l.id));
+    final nationalLines = lines.where((l) => TransportUtils.isNationalLine(l.number)).toList();
+    final allNationalSelected = nationalLines.isNotEmpty &&
+        nationalLines.every((l) => enabledLineIds.contains(l.id));
 
     return Container(
       height: 48,
@@ -81,6 +87,37 @@ class TransitLineChips extends StatelessWidget {
               ),
             ),
           ),
+
+          // Chip "NACIONALES (1-199)"
+          if (onToggleNational != null && nationalLines.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                avatar: Icon(
+                  Icons.alt_route_rounded,
+                  size: 15,
+                  color: allNationalSelected ? Colors.white : const Color(0xFF0284C7),
+                ),
+                label: Text(
+                  'NACIONALES (${nationalLines.length})',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+                selected: allNationalSelected,
+                onSelected: (_) => onToggleNational!(),
+                selectedColor: const Color(0xFF0284C7),
+                labelStyle: TextStyle(
+                  color: allNationalSelected ? Colors.white : const Color(0xFF0284C7),
+                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.92),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: allNationalSelected ? const Color(0xFF0284C7) : const Color(0xFFBAE6FD),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
           ...lines.map((l) {
             final isEnabled = enabledLineIds.contains(l.id);
             final isFocused = focusedLineId == l.id;

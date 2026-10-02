@@ -11,7 +11,7 @@ import 'widgets/transit_lines_sheet.dart';
 import 'line_itinerary_screen.dart';
 import '../data/models/transit_models.dart';
 import '../../cartography/presentation/cartographic_export_dialog.dart';
-import '../../cartography/services/cartographic_pdf_service.dart';
+import '../../../core/utils/transport_utils.dart';
 
 class TransitMapScreen extends ConsumerStatefulWidget {
   const TransitMapScreen({super.key});
@@ -145,6 +145,7 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
         _fitAllNetworkCamera();
       },
       onHideAll: () => notifier.hideAllLines(),
+      onActivateNational: () => notifier.showNationalLines(additive: true),
     );
   }
 
@@ -170,10 +171,13 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
         // Ida
         if (state.directionFilter == TransitDirectionFilter.ida ||
             state.directionFilter == TransitDirectionFilter.both) {
-          if (branch.idaPoints.isNotEmpty) {
+          final pts = branch.idaPoints.isNotEmpty
+              ? branch.idaPoints
+              : (branch.vueltaPoints.isNotEmpty ? branch.vueltaPoints.reversed.toList() : const <LatLng>[]);
+          if (pts.isNotEmpty) {
             polylines.add(
               Polyline(
-                points: branch.idaPoints,
+                points: pts,
                 strokeWidth: isLineFocused ? 5.0 : 3.0,
                 color: isLineFocused ? line.color : line.color.withValues(alpha: 0.55),
               ),
@@ -184,10 +188,13 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
         // Vuelta
         if (state.directionFilter == TransitDirectionFilter.vuelta ||
             state.directionFilter == TransitDirectionFilter.both) {
-          if (branch.vueltaPoints.isNotEmpty) {
+          final pts = branch.vueltaPoints.isNotEmpty
+              ? branch.vueltaPoints
+              : (branch.idaPoints.isNotEmpty ? branch.idaPoints.reversed.toList() : const <LatLng>[]);
+          if (pts.isNotEmpty) {
             polylines.add(
               Polyline(
-                points: branch.vueltaPoints,
+                points: pts,
                 strokeWidth: isLineFocused ? 4.5 : 2.5,
                 color: isLineFocused
                     ? line.color.withValues(alpha: 0.85)
@@ -585,6 +592,34 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
                     notifier.showAllLines();
                     _fitAllNetworkCamera();
                   },
+                  onToggleNational: () {
+                    final res = notifier.toggleNationalLines();
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(
+                              res.activated ? Icons.check_circle_rounded : Icons.visibility_off_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                res.activated
+                                    ? 'Se agregaron ${res.count} líneas nacionales (1-199) al mapa para comparar'
+                                    : 'Se ocultaron las líneas nacionales del mapa',
+                              ),
+                            ),
+                          ],
+                        ),
+                        duration: const Duration(seconds: 2),
+                        backgroundColor: res.activated ? const Color(0xFF0284C7) : Colors.blueGrey.shade800,
+                      ),
+                    );
+                  },
                   onOpenCatalog: _openLinesCatalog,
                 ),
               ],
@@ -595,40 +630,88 @@ class _TransitMapScreenState extends ConsumerState<TransitMapScreen> {
           Positioned(
             right: 14,
             top: 130,
-            child: Column(
-              children: [
-                // Locate Me Button
-                FloatingActionButton.small(
-                  heroTag: 'transit_locate_btn',
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.blue.shade800,
-                  onPressed: _centerOnUser,
-                  tooltip: 'Mi ubicación',
-                  child: const Icon(Icons.my_location),
-                ),
-                const SizedBox(height: 10),
+            child: Builder(
+              builder: (context) {
+                final nationalLines = state.allLines.where((l) => TransportUtils.isNationalLine(l.number)).toList();
+                final allNationalActive = nationalLines.isNotEmpty &&
+                    nationalLines.every((l) => state.enabledLineIds.contains(l.id));
 
-                // Fit Network Bounds Button
-                FloatingActionButton.small(
-                  heroTag: 'transit_fit_network_btn',
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.blueGrey.shade800,
-                  onPressed: () => _fitLineCamera(focusedLine, focusedBranch),
-                  tooltip: 'Ajustar a recorrido',
-                  child: const Icon(Icons.center_focus_strong),
-                ),
-                const SizedBox(height: 10),
+                return Column(
+                  children: [
+                    // Locate Me Button
+                    FloatingActionButton.small(
+                      heroTag: 'transit_locate_btn',
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blue.shade800,
+                      onPressed: _centerOnUser,
+                      tooltip: 'Mi ubicación',
+                      child: const Icon(Icons.my_location),
+                    ),
+                    const SizedBox(height: 10),
 
-                // Toggle Stops Layer
-                FloatingActionButton.small(
-                  heroTag: 'transit_stops_btn',
-                  backgroundColor: state.showStops ? Colors.blue.shade900 : Colors.white,
-                  foregroundColor: state.showStops ? Colors.white : Colors.blueGrey.shade700,
-                  onPressed: () => notifier.toggleStopsVisibility(),
-                  tooltip: state.showStops ? 'Ocultar paradas' : 'Ver paradas',
-                  child: const Icon(Icons.directions_bus),
-                ),
-              ],
+                    // Fit Network Bounds Button
+                    FloatingActionButton.small(
+                      heroTag: 'transit_fit_network_btn',
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blueGrey.shade800,
+                      onPressed: () => _fitLineCamera(focusedLine, focusedBranch),
+                      tooltip: 'Ajustar a recorrido',
+                      child: const Icon(Icons.center_focus_strong),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Toggle / Compare National Lines Button
+                    FloatingActionButton.small(
+                      heroTag: 'transit_national_lines_btn',
+                      backgroundColor: allNationalActive ? const Color(0xFF0284C7) : Colors.white,
+                      foregroundColor: allNationalActive ? Colors.white : const Color(0xFF0284C7),
+                      onPressed: () {
+                        final res = notifier.toggleNationalLines();
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(
+                                  res.activated ? Icons.check_circle_rounded : Icons.visibility_off_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    res.activated
+                                        ? 'Se agregaron ${res.count} líneas nacionales (1-199) al mapa para comparar'
+                                        : 'Se ocultaron las líneas nacionales del mapa',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: res.activated ? const Color(0xFF0284C7) : Colors.blueGrey.shade800,
+                          ),
+                        );
+                      },
+                      tooltip: allNationalActive
+                          ? 'Ocultar Líneas Nacionales (1-199)'
+                          : 'Agregar / Comparar Líneas Nacionales (1-199)',
+                      child: const Icon(Icons.alt_route_rounded),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Toggle Stops Layer
+                    FloatingActionButton.small(
+                      heroTag: 'transit_stops_btn',
+                      backgroundColor: state.showStops ? Colors.blue.shade900 : Colors.white,
+                      foregroundColor: state.showStops ? Colors.white : Colors.blueGrey.shade700,
+                      onPressed: () => notifier.toggleStopsVisibility(),
+                      tooltip: state.showStops ? 'Ocultar paradas' : 'Ver paradas',
+                      child: const Icon(Icons.directions_bus),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 

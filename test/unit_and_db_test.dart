@@ -75,6 +75,39 @@ void main() {
     });
   });
 
+  group('TransportUtils Tests', () {
+    test('Identifies National lines correctly (1 to 199)', () {
+      expect(TransportUtils.isNationalLine('9'), isTrue);
+      expect(TransportUtils.isNationalLine('100'), isTrue);
+      expect(TransportUtils.isNationalLine('160'), isTrue);
+      expect(TransportUtils.isNationalLine('178'), isTrue);
+      expect(TransportUtils.isNationalLine('271'), isFalse);
+      expect(TransportUtils.isNationalLine('520'), isFalse);
+    });
+
+    test('Identifies Municipal lines correctly (500 to 599)', () {
+      expect(TransportUtils.isMunicipalLine('520'), isTrue);
+      expect(TransportUtils.isMunicipalLine('522'), isTrue);
+      expect(TransportUtils.isMunicipalLine('527'), isTrue);
+      expect(TransportUtils.isMunicipalLine('160'), isFalse);
+      expect(TransportUtils.isMunicipalLine('271'), isFalse);
+    });
+
+    test('Identifies Provincial lines correctly (200 to 499)', () {
+      expect(TransportUtils.isProvincialLine('247'), isTrue);
+      expect(TransportUtils.isProvincialLine('271'), isTrue);
+      expect(TransportUtils.isProvincialLine('318'), isTrue);
+      expect(TransportUtils.isProvincialLine('9'), isFalse);
+      expect(TransportUtils.isProvincialLine('520'), isFalse);
+    });
+
+    test('Returns appropriate jurisdiction label', () {
+      expect(TransportUtils.getJurisdictionLabel('9'), 'Nacional');
+      expect(TransportUtils.getJurisdictionLabel('271'), 'Provincial');
+      expect(TransportUtils.getJurisdictionLabel('520'), 'Municipal');
+    });
+  });
+
   group('Drift Database & Repositories In-Memory Tests', () {
     late AppDatabase db;
     late TripsRepository tripsRepo;

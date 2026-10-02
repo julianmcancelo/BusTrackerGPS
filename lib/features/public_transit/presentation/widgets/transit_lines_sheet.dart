@@ -12,6 +12,7 @@ class TransitLinesSheet extends StatefulWidget {
   final ValueChanged<int> onLineFocused;
   final VoidCallback onShowAll;
   final VoidCallback onHideAll;
+  final VoidCallback? onActivateNational;
 
   const TransitLinesSheet({
     super.key,
@@ -22,6 +23,7 @@ class TransitLinesSheet extends StatefulWidget {
     required this.onLineFocused,
     required this.onShowAll,
     required this.onHideAll,
+    this.onActivateNational,
   });
 
   static Future<void> show(
@@ -33,6 +35,7 @@ class TransitLinesSheet extends StatefulWidget {
     required ValueChanged<int> onLineFocused,
     required VoidCallback onShowAll,
     required VoidCallback onHideAll,
+    VoidCallback? onActivateNational,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -46,6 +49,7 @@ class TransitLinesSheet extends StatefulWidget {
         onLineFocused: onLineFocused,
         onShowAll: onShowAll,
         onHideAll: onHideAll,
+        onActivateNational: onActivateNational,
       ),
     );
   }
@@ -68,17 +72,13 @@ class _TransitLinesSheetState extends State<TransitLinesSheet> {
   List<TransitLineSummary> get _filteredList {
     var list = widget.lines;
 
-    // Filtro por categoría municipal vs nacional/provincial
-    if (_category == _LineCategoryFilter.municipal) {
-      list = list.where((l) {
-        final n = TransportUtils.parseLineNumberInt(l.number);
-        return n >= 500 && n <= 599;
-      }).toList();
-    } else if (_category == _LineCategoryFilter.provincialNational) {
-      list = list.where((l) {
-        final n = TransportUtils.parseLineNumberInt(l.number);
-        return n < 500 || n > 599;
-      }).toList();
+    // Filtro por categoría de jurisdicción
+    if (_category == _LineCategoryFilter.national) {
+      list = list.where((l) => TransportUtils.isNationalLine(l.number)).toList();
+    } else if (_category == _LineCategoryFilter.municipal) {
+      list = list.where((l) => TransportUtils.isMunicipalLine(l.number)).toList();
+    } else if (_category == _LineCategoryFilter.provincial) {
+      list = list.where((l) => TransportUtils.isProvincialLine(l.number)).toList();
     }
 
     // Filtro por texto de búsqueda
@@ -213,74 +213,111 @@ class _TransitLinesSheetState extends State<TransitLinesSheet> {
               ),
 
               // Chips de Categoría & Acciones globales
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Row(
-                  children: [
-                    ChoiceChip(
-                      label: Text('Todas (${widget.lines.length})'),
-                      selected: _category == _LineCategoryFilter.all,
-                      onSelected: (_) => setState(() => _category = _LineCategoryFilter.all),
-                      selectedColor: const Color(0xFF1D4ED8),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _category == _LineCategoryFilter.all ? Colors.white : Colors.black87,
-                      ),
+              Builder(
+                builder: (context) {
+                  final totalNat = widget.lines.where((l) => TransportUtils.isNationalLine(l.number)).length;
+                  final totalMun = widget.lines.where((l) => TransportUtils.isMunicipalLine(l.number)).length;
+                  final totalProv = widget.lines.where((l) => TransportUtils.isProvincialLine(l.number)).length;
+
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: Text('Todas (${widget.lines.length})'),
+                          selected: _category == _LineCategoryFilter.all,
+                          onSelected: (_) => setState(() => _category = _LineCategoryFilter.all),
+                          selectedColor: const Color(0xFF1D4ED8),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _category == _LineCategoryFilter.all ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          avatar: const Icon(Icons.alt_route_rounded, size: 14, color: Colors.blue),
+                          label: Text('Nacionales ($totalNat)'),
+                          selected: _category == _LineCategoryFilter.national,
+                          onSelected: (_) => setState(() => _category = _LineCategoryFilter.national),
+                          selectedColor: const Color(0xFF0284C7),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _category == _LineCategoryFilter.national ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text('Municipales ($totalMun)'),
+                          selected: _category == _LineCategoryFilter.municipal,
+                          onSelected: (_) => setState(() => _category = _LineCategoryFilter.municipal),
+                          selectedColor: const Color(0xFF1D4ED8),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _category == _LineCategoryFilter.municipal ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text('Provinciales ($totalProv)'),
+                          selected: _category == _LineCategoryFilter.provincial,
+                          onSelected: (_) => setState(() => _category = _LineCategoryFilter.provincial),
+                          selectedColor: const Color(0xFF7C3AED),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _category == _LineCategoryFilter.provincial ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        if (widget.onActivateNational != null) ...[
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFF0284C7),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                            icon: const Icon(Icons.add_road_rounded, size: 16),
+                            label: const Text('+ Nacionales', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              widget.onActivateNational!();
+                              setState(() {});
+                            },
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          icon: const Icon(Icons.select_all_rounded, size: 16),
+                          label: const Text('Activar todas', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            widget.onShowAll();
+                            setState(() {});
+                          },
+                        ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: Colors.red.shade700,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          icon: const Icon(Icons.deselect_rounded, size: 16),
+                          label: const Text('Ocultar todas', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            widget.onHideAll();
+                            setState(() {});
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Municipales (500+)'),
-                      selected: _category == _LineCategoryFilter.municipal,
-                      onSelected: (_) => setState(() => _category = _LineCategoryFilter.municipal),
-                      selectedColor: const Color(0xFF1D4ED8),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _category == _LineCategoryFilter.municipal ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Interurbanas'),
-                      selected: _category == _LineCategoryFilter.provincialNational,
-                      onSelected: (_) => setState(() => _category = _LineCategoryFilter.provincialNational),
-                      selectedColor: const Color(0xFF1D4ED8),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _category == _LineCategoryFilter.provincialNational ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      icon: const Icon(Icons.select_all_rounded, size: 16),
-                      label: const Text('Activar todas', style: TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        widget.onShowAll();
-                        setState(() {});
-                      },
-                    ),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: Colors.red.shade700,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      icon: const Icon(Icons.deselect_rounded, size: 16),
-                      label: const Text('Ocultar todas', style: TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        widget.onHideAll();
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const Divider(height: 1),
@@ -399,6 +436,39 @@ class _TransitLinesSheetState extends State<TransitLinesSheet> {
                                                     ),
                                                   ),
                                                 ),
+                                              Builder(
+                                                builder: (context) {
+                                                  final isNat = TransportUtils.isNationalLine(line.number);
+                                                  final isMun = TransportUtils.isMunicipalLine(line.number);
+                                                  final jurLabel = TransportUtils.getJurisdictionLabel(line.number);
+                                                  return Container(
+                                                    margin: const EdgeInsets.only(left: 4),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: isNat
+                                                          ? Colors.blue.shade50
+                                                          : (isMun ? Colors.teal.shade50 : Colors.purple.shade50),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(
+                                                        color: isNat
+                                                            ? Colors.blue.shade300
+                                                            : (isMun ? Colors.teal.shade300 : Colors.purple.shade300),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      jurLabel,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: isNat
+                                                            ? Colors.blue.shade800
+                                                            : (isMun ? Colors.teal.shade800 : Colors.purple.shade800),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
                                             ],
                                           ),
                                           const SizedBox(height: 2),
@@ -454,6 +524,7 @@ class _TransitLinesSheetState extends State<TransitLinesSheet> {
 
 enum _LineCategoryFilter {
   all,
+  national,
   municipal,
-  provincialNational,
+  provincial,
 }

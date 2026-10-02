@@ -55,6 +55,28 @@ class TransportUtils {
     return val >= 500 && val <= 599;
   }
 
+  /// Determina si una línea es de jurisdicción nacional (1 a 199 en el AMBA)
+  static bool isNationalLine(String? lineNumber) {
+    final num = normalizeLineNumber(lineNumber);
+    final val = int.tryParse(num) ?? 0;
+    return val >= 1 && val < 200;
+  }
+
+  /// Determina si una línea es de jurisdicción provincial (200 a 499 en el conurbano bonaerense)
+  static bool isProvincialLine(String? lineNumber) {
+    final num = normalizeLineNumber(lineNumber);
+    final val = int.tryParse(num) ?? 0;
+    return val >= 200 && val < 500;
+  }
+
+  /// Retorna la etiqueta formal de jurisdicción para la línea
+  static String getJurisdictionLabel(String? lineNumber) {
+    if (isMunicipalLine(lineNumber)) return 'Municipal';
+    if (isNationalLine(lineNumber)) return 'Nacional';
+    if (isProvincialLine(lineNumber)) return 'Provincial';
+    return 'Línea';
+  }
+
   /// Retorna un color distintivo oficial según el número de línea de Lanús.
   static Color getLineColor(String? lineNumber) {
     final num = normalizeLineNumber(lineNumber);

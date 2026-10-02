@@ -1667,18 +1667,6 @@ class CartographicPdfService {
     canvas.fillPath();
   }
 
-  static double _distanceMeters(LatLng p1, LatLng p2) {
-    const earthRadius = 6371000.0;
-    final dLat = (p2.latitude - p1.latitude) * math.pi / 180.0;
-    final dLon = (p2.longitude - p1.longitude) * math.pi / 180.0;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(p1.latitude * math.pi / 180.0) *
-            math.cos(p2.latitude * math.pi / 180.0) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadius * c;
-  }
 
   /// Rosa de los vientos arquitectónica con círculo graduado
   static pw.Widget _buildArchitecturalNorthArrow(bool isPlotter) {

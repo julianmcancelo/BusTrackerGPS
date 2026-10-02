@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import '../data/models/transit_models.dart';
 import '../data/transit_repository.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/utils/transport_utils.dart';
 
 class TransitState {
   final List<TransitLineSummary> allLines;
@@ -224,6 +225,58 @@ class TransitNotifier extends Notifier<TransitState> {
 
   void hideAllLines() {
     state = state.copyWith(enabledLineIds: {});
+  }
+
+  /// Activa todas las líneas nacionales (1-199) en el mapa.
+  /// Si [additive] es true, las agrega a las ya visibles; si es false, solo activa las nacionales.
+  void showNationalLines({bool additive = true}) {
+    final nationalIds = state.allLines
+        .where((l) => TransportUtils.isNationalLine(l.number))
+        .map((l) => l.id)
+        .toSet();
+    final next = additive ? (Set<int>.from(state.enabledLineIds)..addAll(nationalIds)) : nationalIds;
+    state = state.copyWith(enabledLineIds: next);
+  }
+
+  /// Alterna todas las líneas nacionales en el mapa: si ya están todas activas, las oculta;
+  /// de lo contrario, las activa e incorpora a la vista actual.
+  /// Retorna un mapa o tupla con el estado (activadas o desactivadas) y la cantidad.
+  ({bool activated, int count}) toggleNationalLines() {
+    final nationalLines = state.allLines
+        .where((l) => TransportUtils.isNationalLine(l.number))
+        .toList();
+    if (nationalLines.isEmpty) return (activated: false, count: 0);
+
+    final nationalIds = nationalLines.map((l) => l.id).toSet();
+    final allActive = nationalIds.every((id) => state.enabledLineIds.contains(id));
+
+    final next = Set<int>.from(state.enabledLineIds);
+    if (allActive) {
+      next.removeAll(nationalIds);
+    } else {
+      next.addAll(nationalIds);
+    }
+    state = state.copyWith(enabledLineIds: next);
+    return (activated: !allActive, count: nationalLines.length);
+  }
+
+  /// Activa todas las líneas municipales de Lanús (serie 500).
+  void showMunicipalLines({bool additive = false}) {
+    final municipalIds = state.allLines
+        .where((l) => TransportUtils.isMunicipalLine(l.number))
+        .map((l) => l.id)
+        .toSet();
+    final next = additive ? (Set<int>.from(state.enabledLineIds)..addAll(municipalIds)) : municipalIds;
+    state = state.copyWith(enabledLineIds: next);
+  }
+
+  /// Activa simultáneamente las líneas comunales municipales y nacionales para comparación directa.
+  void compareMunicipalAndNational() {
+    final ids = state.allLines
+        .where((l) => TransportUtils.isMunicipalLine(l.number) || TransportUtils.isNationalLine(l.number))
+        .map((l) => l.id)
+        .toSet();
+    state = state.copyWith(enabledLineIds: ids);
   }
 
   void focusLine(int lineId) {
